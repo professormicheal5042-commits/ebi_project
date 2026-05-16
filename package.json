@@ -1,0 +1,14 @@
+{
+  "name": "ebi-project",
+  "private": true,
+  "scripts": {
+    "dev:api": "python -m uvicorn api.index:app --reload --host 0.0.0.0 --port 8000",
+    "deploy:api": "vercel --prod",
+    "deploy:hosting": "firebase deploy --only hosting",
+    "deploy:all": "npm run deploy:api && npm run deploy:hosting"
+  },
+  "devDependencies": {
+    "firebase-tools": "^14.0.0",
+    "vercel": "^48.0.0"
+  }
+}

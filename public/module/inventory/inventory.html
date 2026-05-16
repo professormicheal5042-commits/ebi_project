@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inventory — EBI Expiry Alert System</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="./inventory.css" />
+</head>
+
+<body>
+  <div class="sidebar-overlay" id="overlay" onclick="toggleSidebar()"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-logo">
+      <div class="sb-logo-icon">🌿</div>
+      <div>
+        <div class="sb-logo-text">EBI System</div>
+        <div class="sb-logo-sub">AI Expiry Guard</div>
+      </div>
+    </div>
+    <nav class="sb-nav">
+      <a class="sb-link" href="../dashboard/dashboard.html"><span class="sb-icon">📊</span> Dashboard</a>
+      <a class="sb-link active" href="inventory.html"><span class="sb-icon">📦</span> Inventory</a>
+      <a class="sb-link" href="../add_product/add_product.html"><span class="sb-icon">➕</span> Add Product</a>
+      <a class="sb-link" href="../alerts/alerts.html"><span class="sb-icon">🔔</span> Alerts <span
+          class="sb-badge">3</span></a>
+      <a class="sb-link" href="../reports/reports.html"><span class="sb-icon">📈</span> Reports</a>
+      <a class="sb-link" href="../profile/profile.html"><span class="sb-icon">👤</span> Profile</a>
+    </nav>
+    <div class="sb-divider"></div>
+    <div class="sb-footer"><button class="sb-logout" onclick="handleLogout()">🚪 Logout</button></div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <button class="hamburger" onclick="toggleSidebar()">☰</button>
+        <h1>My Inventory</h1>
+      </div>
+      <a href="../add_product/add_product.html"><button class="btn-add">➕ Add Product</button></a>
+    </div>
+    <div class="content">
+      <div class="filter-bar">
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="searchInput" placeholder="Search products..." oninput="filterTable()" />
+        </div>
+        <select class="filter-select" id="categoryFilter" onchange="filterTable()">
+          <option value="">All Categories</option>
+          <option value="Food">Food</option>
+          <option value="Medicine">Medicine</option>
+          <option value="Household">Household</option>
+          <option value="Cosmetics">Cosmetics</option>
+          <option value="Other">Other</option>
+        </select>
+        <select class="filter-select" id="statusFilter" onchange="filterTable()">
+          <option value="">All Status</option>
+          <option value="safe">Safe</option>
+          <option value="soon">Expiring Soon</option>
+          <option value="expired">Expired</option>
+        </select>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Product</th>
+              <th>Category</th>
+              <th>Qty</th>
+              <th>Expiry Date</th>
+              <th>Days Left</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="inventoryTable">
+            <!-- Rows injected by JS -->
+          </tbody>
+        </table>
+        <div class="empty-state" id="emptyState" style="display:none;">
+          <div style="font-size:40px;">📦</div>
+          <p>No products found. <a href="../add_product/add_product.html" style="color:var(--green-400);">Add your first
+              product →</a></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { supabase } from '../../shared/js/supabase.js';
+
+    // 1. ROUTE GUARD & SESSION
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      window.location.href = '../auth/login.html';
+    }
+    const userId = session.user.id;
+
+    let products = [];
+
+    async function loadProducts() {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('user_id', userId)
+        .order('expiry_date', { ascending: true });
+        
+      if (data) {
+        const nowMs = new Date().getTime();
+        products = data.map(p => {
+          const expDate = new Date(p.expiry_date).getTime();
+          const daysLeft = Math.ceil((expDate - nowMs) / 86400000);
+          return {
+            id: p.id,
+            name: p.name,
+            category: p.category || 'Other',
+            qty: (p.quantity || 1) + ' pcs',
+            expiry: p.expiry_date,
+            days: daysLeft
+          };
+        });
+        window.filterTable();
+      }
+    }
+
+    window.getStatus = function(days) {
+      if (days < 0) return 'expired';
+      if (days <= 7) return 'soon';
+      return 'safe';
+    }
+    window.getBadge = function(days) {
+      const s = window.getStatus(days);
+      if (s === 'expired') return '<span class="badge expired">EXPIRED</span>';
+      if (s === 'soon') return '<span class="badge soon">EXP. SOON</span>';
+      return '<span class="badge safe">SAFE</span>';
+    }
+    window.getDaysDisplay = function(days) {
+      if (days < 0) return `<span style="color:var(--red)">${days}d</span>`;
+      if (days <= 7) return `<span style="color:var(--orange)">${days}d</span>`;
+      return `<span style="color:var(--green-400)">${days}d</span>`;
+    }
+
+    window.renderTable = function(data) {
+      const tb = document.getElementById('inventoryTable');
+      const empty = document.getElementById('emptyState');
+      if (!data.length) { tb.innerHTML = ''; empty.style.display = 'block'; return; }
+      empty.style.display = 'none';
+      tb.innerHTML = data.map((p, i) => `
+      <tr>
+        <td class="td-muted">${i + 1}</td>
+        <td class="td-name">${p.name}</td>
+        <td class="td-num">${p.category}</td>
+        <td class="td-num">${p.qty}</td>
+        <td class="td-muted">${p.expiry}</td>
+        <td>${window.getDaysDisplay(p.days)}</td>
+        <td>${window.getBadge(p.days)}</td>
+        <td><div class="actions">
+          <a href="../product/product_detail.html?id=${p.id}"><button class="act-btn">View</button></a>
+          <a href="../add_product/add_product.html?id=${p.id}"><button class="act-btn">Edit</button></a>
+          <button class="act-btn del" onclick="deleteProduct('${p.id}')">Delete</button>
+        </div></td>
+      </tr>`).join('');
+    }
+
+    window.filterTable = function() {
+      const q = document.getElementById('searchInput').value.toLowerCase();
+      const cat = document.getElementById('categoryFilter').value;
+      const stat = document.getElementById('statusFilter').value;
+      const filtered = products.filter(p => {
+        const matchQ = p.name.toLowerCase().includes(q);
+        const matchC = !cat || p.category === cat;
+        const matchS = !stat || window.getStatus(p.days) === stat;
+        return matchQ && matchC && matchS;
+      });
+      window.renderTable(filtered);
+    }
+
+    window.deleteProduct = async function(id) {
+      if (confirm('Delete this product? This cannot be undone.')) {
+        await supabase.from("products").delete().eq("id", id);
+        loadProducts(); // reload the data
+      }
+    }
+
+    window.toggleSidebar = function() {
+      document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('overlay').classList.toggle('open');
+    }
+
+    window.handleLogout = async function() {
+      await supabase.auth.signOut();
+      window.location.href = '../auth/login.html';
+    }
+
+    loadProducts();
+  </script>
+</body>
+
+</html>

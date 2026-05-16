@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Product Detail — EBI Expiry Alert System</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="./product_detail.css" />
+</head>
+
+<body>
+  <div class="sidebar-overlay" id="overlay" onclick="toggleSidebar()"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-logo">
+      <div class="sb-logo-icon">🌿</div>
+      <div>
+        <div class="sb-logo-text">EBI System</div>
+        <div class="sb-logo-sub">AI Expiry Guard</div>
+      </div>
+    </div>
+    <nav class="sb-nav">
+      <a class="sb-link" href="../dashboard/dashboard.html"><span class="sb-icon">📊</span> Dashboard</a>
+      <a class="sb-link active" href="../inventory/inventory.html"><span class="sb-icon">📦</span> Inventory</a>
+      <a class="sb-link" href="../add_product/add_product.html"><span class="sb-icon">➕</span> Add Product</a>
+      <a class="sb-link" href="../alerts/alerts.html"><span class="sb-icon">🔔</span> Alerts <span
+          class="sb-badge">3</span></a>
+      <a class="sb-link" href="../reports/reports.html"><span class="sb-icon">📈</span> Reports</a>
+      <a class="sb-link" href="../profile/profile.html"><span class="sb-icon">👤</span> Profile</a>
+    </nav>
+    <div class="sb-divider"></div>
+    <div class="sb-footer"><button class="sb-logout" onclick="handleLogout()">🚪 Logout</button></div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <button class="hamburger" onclick="toggleSidebar()">☰</button>
+      <a class="back-link" href="../inventory/inventory.html">← Back to Inventory</a>
+    </div>
+    <div class="content">
+      <div class="detail-wrap">
+
+        <!-- STATUS BANNER -->
+        <div class="status-banner expired" id="statusBanner">
+          <div class="banner-icon" id="bannerIcon">🚨</div>
+          <div class="banner-text expired" id="bannerText">
+            <h2 id="statusTitle">EXPIRED</h2>
+            <p id="statusSubtitle">This product has passed its expiry date. Dispose of it immediately.</p>
+          </div>
+        </div>
+
+        <!-- PRODUCT DETAIL -->
+        <div class="detail-card">
+          <div class="product-name" id="productName">Milk 2L</div>
+          <div class="detail-grid">
+            <div class="detail-row">
+              <div class="detail-label">Category</div>
+              <div class="detail-val" id="prodCategory">🍎 Food</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Quantity</div>
+              <div class="detail-val" id="prodQty">2 pcs</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Mfg Date</div>
+              <div class="detail-val" id="prodMfg">10 April 2026</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Expiry Date</div>
+              <div class="detail-val" id="prodExpiry">11 May 2026</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Days Left</div>
+              <div class="days-big neg" id="daysLeft">-2</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Date Added</div>
+              <div class="detail-val" id="dateAdded">01 May 2026</div>
+            </div>
+          </div>
+          <div id="notesSection">
+            <div class="notes-label">Notes</div>
+            <div class="notes-box" id="prodNotes">Keep refrigerated. Consume immediately after opening.</div>
+          </div>
+        </div>
+
+        <!-- ACTIONS -->
+        <div class="action-row">
+          <button class="btn-edit" onclick="editProduct()">✏️ Edit Product</button>
+          <button class="btn-del" onclick="deleteProduct()">🗑️ Delete Product</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // In production: fetch product by URL param from Supabase
+    // const id = new URLSearchParams(window.location.search).get('id');
+    // const { data } = await supabase.from('products').select('*').eq('id', id).single();
+
+    // Demo product data
+    const product = {
+      id: 1, name: 'Milk 2L', category: 'Food', qty: '2 pcs',
+      mfgDate: '2026-04-10', expiryDate: '2026-05-11', notes: 'Keep refrigerated. Consume immediately after opening.',
+      dateAdded: '2026-05-01'
+    };
+
+    function formatDate(d) {
+      return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    }
+
+    function calcDays(expiry) {
+      const diff = new Date(expiry) - new Date();
+      return Math.ceil(diff / (1000 * 60 * 60 * 24));
+    }
+
+    function render(p) {
+      const days = calcDays(p.expiryDate);
+      document.getElementById('productName').textContent = p.name;
+      document.getElementById('prodCategory').textContent = p.category;
+      document.getElementById('prodQty').textContent = p.qty;
+      document.getElementById('prodMfg').textContent = p.mfgDate ? formatDate(p.mfgDate) : '—';
+      document.getElementById('prodExpiry').textContent = formatDate(p.expiryDate);
+      document.getElementById('daysLeft').textContent = days;
+      document.getElementById('dateAdded').textContent = formatDate(p.dateAdded);
+      document.getElementById('prodNotes').textContent = p.notes || 'No notes.';
+
+      const banner = document.getElementById('statusBanner');
+      const bannerText = document.getElementById('bannerText');
+      const icon = document.getElementById('bannerIcon');
+      const title = document.getElementById('statusTitle');
+      const sub = document.getElementById('statusSubtitle');
+      const dEl = document.getElementById('daysLeft');
+
+      if (days < 0) {
+        banner.className = 'status-banner expired';
+        bannerText.className = 'banner-text expired';
+        icon.textContent = '🚨';
+        title.textContent = 'EXPIRED';
+        sub.textContent = 'This product has passed its expiry date. Dispose of it immediately.';
+        dEl.className = 'days-big neg';
+      } else if (days <= 7) {
+        banner.className = 'status-banner soon';
+        bannerText.className = 'banner-text soon';
+        icon.textContent = '⚠️';
+        title.textContent = 'EXPIRING SOON';
+        sub.textContent = 'This product will expire in ' + days + ' day(s). Use it soon.';
+        dEl.className = 'days-big warn';
+      } else {
+        banner.className = 'status-banner safe';
+        bannerText.className = 'banner-text safe';
+        icon.textContent = '✅';
+        title.textContent = 'SAFE';
+        sub.textContent = 'This product is safe to use for the next ' + days + ' days.';
+        dEl.className = 'days-big ok';
+      }
+    }
+
+    function editProduct() {
+      window.location.href = '../add_product/add_product.html?id=' + product.id;
+    }
+
+    function deleteProduct() {
+      if (confirm('Delete "' + product.name + '"? This cannot be undone.')) {
+        // TODO Day 3: await supabase.from('products').delete().eq('id', product.id);
+        window.location.href = '../inventory/inventory.html';
+      }
+    }
+
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('overlay').classList.toggle('open');
+    }
+
+    render(product);
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Reports — EBI Expiry Alert System</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="./reports.css"/>
+</head>
+<body>
+<div class="sidebar-overlay" id="overlay" onclick="toggleSidebar()"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sb-logo"><div class="sb-logo-icon">🌿</div><div><div class="sb-logo-text">EBI System</div><div class="sb-logo-sub">AI Expiry Guard</div></div></div>
+  <nav class="sb-nav">
+    <a class="sb-link" href="../dashboard/dashboard.html"><span class="sb-icon">📊</span> Dashboard</a>
+    <a class="sb-link" href="../inventory/inventory.html"><span class="sb-icon">📦</span> Inventory</a>
+    <a class="sb-link" href="../add_product/add_product.html"><span class="sb-icon">➕</span> Add Product</a>
+    <a class="sb-link" href="../alerts/alerts.html"><span class="sb-icon">🔔</span> Alerts <span class="sb-badge">3</span></a>
+    <a class="sb-link active" href="reports.html"><span class="sb-icon">📈</span> Reports</a>
+    <a class="sb-link" href="../profile/profile.html"><span class="sb-icon">👤</span> Profile</a>
+  </nav>
+  <div class="sb-divider"></div>
+  <div class="sb-footer"><button class="sb-logout" onclick="handleLogout()">🚪 Logout</button></div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <button class="hamburger" onclick="toggleSidebar()">☰</button>
+    <h1>Reports &amp; Analytics</h1>
+  </div>
+  <div class="content">
+
+    <!-- SUMMARY CARDS -->
+    <div class="summary-row">
+      <div class="sum-card"><div class="sum-val green">16</div><div class="sum-label">✅ Safe Products</div></div>
+      <div class="sum-card"><div class="sum-val orange">5</div><div class="sum-label">⚠️ Expiring Soon</div></div>
+      <div class="sum-card"><div class="sum-val red">3</div><div class="sum-label">🚨 Expired</div></div>
+    </div>
+
+    <!-- OVERALL STATUS -->
+    <div class="panel">
+      <div class="panel-title">Overall Status Distribution</div>
+      <div class="chart-row">
+        <div class="chart-label-row">
+          <span class="chart-label-left">✅ Safe</span>
+          <span class="chart-label-right">16 products (67%)</span>
+        </div>
+        <div class="bar-bg"><div class="bar-fill green" id="safeBar" style="width:0%"></div></div>
+      </div>
+      <div class="chart-row">
+        <div class="chart-label-row">
+          <span class="chart-label-left">⚠️ Expiring Soon</span>
+          <span class="chart-label-right">5 products (21%)</span>
+        </div>
+        <div class="bar-bg"><div class="bar-fill orange" id="soonBar" style="width:0%"></div></div>
+      </div>
+      <div class="chart-row">
+        <div class="chart-label-row">
+          <span class="chart-label-left">🚨 Expired</span>
+          <span class="chart-label-right">3 products (12%)</span>
+        </div>
+        <div class="bar-bg"><div class="bar-fill red" id="expiredBar" style="width:0%"></div></div>
+      </div>
+    </div>
+
+    <!-- CATEGORY BREAKDOWN -->
+    <div class="panel">
+      <div class="panel-title">
+        Breakdown by Category
+        <button class="btn-export" onclick="exportCSV()">⬇️ Export CSV</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Category</th><th>Total</th><th>Safe</th><th>Expiring Soon</th><th>Expired</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>🍎 Food</td><td>12</td><td class="td-safe">6</td><td class="td-soon">4</td><td class="td-expired">2</td></tr>
+            <tr><td>💊 Medicine</td><td>7</td><td class="td-safe">6</td><td class="td-soon">1</td><td class="td-expired">1</td></tr>
+            <tr><td>🏠 Household</td><td>3</td><td class="td-safe">3</td><td class="td-soon">0</td><td class="td-expired">0</td></tr>
+            <tr><td>📦 Other</td><td>2</td><td class="td-safe">2</td><td class="td-soon">0</td><td class="td-expired">0</td></tr>
+            <tr style="border-top:2px solid var(--border);font-weight:700;"><td>Total</td><td>24</td><td class="td-safe">16</td><td class="td-soon">5</td><td class="td-expired">3</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // Animate bars
+  setTimeout(() => {
+    document.getElementById('safeBar').style.width = '67%';
+    document.getElementById('soonBar').style.width = '21%';
+    document.getElementById('expiredBar').style.width = '12%';
+  }, 300);
+
+  function exportCSV() {
+    const rows = [
+      ['Category','Total','Safe','Expiring Soon','Expired'],
+      ['Food',12,6,4,2],
+      ['Medicine',7,6,1,1],
+      ['Household',3,3,0,0],
+      ['Other',2,2,0,0],
+    ];
+    const csv = rows.map(r => r.join(',')).join('\n');
+    const a = document.createElement('a');
+    a.href = 'data:text/csv,' + encodeURIComponent(csv);
+    a.download = 'ebi_report_' + new Date().toISOString().slice(0,10) + '.csv';
+    a.click();
+  }
+
+  function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('overlay').classList.toggle('open');
+  }
+</script>
+</body>
+</html>

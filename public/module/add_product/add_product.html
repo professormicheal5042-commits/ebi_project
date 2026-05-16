@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Add Product — EBI Expiry Alert System</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" />
+  <link rel="stylesheet" href="./add_product.css" />
+</head>
+
+<body>
+  <div class="sidebar-overlay" id="overlay" onclick="toggleSidebar()"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-logo">
+      <div class="sb-logo-icon">🌿</div>
+      <div>
+        <div class="sb-logo-text">EBI System</div>
+        <div class="sb-logo-sub">AI Expiry Guard</div>
+      </div>
+    </div>
+    <nav class="sb-nav">
+      <a class="sb-link" href="../dashboard/dashboard.html"><span class="sb-icon">📊</span> Dashboard</a>
+      <a class="sb-link" href="../inventory/inventory.html"><span class="sb-icon">📦</span> Inventory</a>
+      <a class="sb-link active" href="add_product.html"><span class="sb-icon">➕</span> Add Product</a>
+      <a class="sb-link" href="../alerts/alerts.html"><span class="sb-icon">🔔</span> Alerts <span
+          class="sb-badge">3</span></a>
+      <a class="sb-link" href="../reports/reports.html"><span class="sb-icon">📈</span> Reports</a>
+      <a class="sb-link" href="../profile/profile.html"><span class="sb-icon">👤</span> Profile</a>
+    </nav>
+    <div class="sb-divider"></div>
+    <div class="sb-footer"><button class="sb-logout" onclick="handleLogout()">🚪 Logout</button></div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <button class="hamburger" onclick="toggleSidebar()">☰</button>
+      <h1 id="pageTitle">Add New Product</h1>
+    </div>
+    <div class="content">
+      <div class="form-card">
+        <h2 id="formHeading">Add New Product</h2>
+        <p class="sub">Fill in the product details below. Fields marked <span style="color:var(--red)">*</span> are
+          required.</p>
+
+        <div class="error-box" id="errorBox"></div>
+        <div class="success-box" id="successBox"></div>
+
+        <!-- OCR Section — Upload+Crop / Live Camera -->
+        <div class="ocr-section">
+          <!-- Tabs -->
+          <div class="ocr-tabs">
+            <button class="ocr-tab active" id="tabUpload" onclick="switchOcrTab('upload')">📁 Upload &amp; Crop</button>
+            <button class="ocr-tab" id="tabCamera" onclick="switchOcrTab('camera')">📷 Live Camera</button>
+            <button class="ocr-tab" id="tabBarcode" onclick="switchOcrTab('barcode')">📊 Barcode / QR</button>
+          </div>
+
+          <!-- UPLOAD + CROP PANEL -->
+          <div class="ocr-panel active" id="panelUpload">
+            <div class="ocr-icon">🖼️</div>
+            <div class="ocr-title">Upload Product Label</div>
+            <div class="ocr-desc">Upload an image, crop the expiry date area, then scan.</div>
+            <input type="file" id="ocrInput" class="ocr-input" accept="image/*"
+              onchange="loadImageForCrop(this.files)" />
+            <!-- Crop preview -->
+            <div class="crop-container" id="cropContainer">
+              <img id="cropImage" src="" alt="crop preview" />
+            </div>
+            <div class="crop-actions" id="cropActions" style="display:none">
+              <button type="button" class="btn-ocr" onclick="document.getElementById('ocrInput').click()">🔄 Change
+                Image</button>
+              <button type="button" class="btn-ocr" id="btnScanCrop" onclick="scanCroppedImage()">
+                <span id="cropScanText">✂️ Crop &amp; Scan</span>
+                <span id="cropScanLoading" style="display:none"><span class="spinner"></span> Scanning...</span>
+              </button>
+            </div>
+            <div id="uploadDefaultBtn">
+              <button type="button" class="btn-ocr" onclick="document.getElementById('ocrInput').click()">📂 Choose
+                Image</button>
+            </div>
+          </div>
+
+          <!-- CAMERA PANEL -->
+          <div class="ocr-panel" id="panelCamera">
+            <div class="ocr-icon">📷</div>
+            <div class="ocr-title">Use Live Camera</div>
+            <div class="ocr-desc">Point your camera at the expiry date label and capture.</div>
+            <video id="cameraStream" autoplay playsinline></video>
+            <canvas id="cameraCanvas"></canvas>
+            <div class="camera-actions">
+              <button type="button" class="btn-ocr" id="btnStartCam" onclick="startCamera()">▶️ Start Camera</button>
+              <button type="button" class="btn-ocr" id="btnCapture" onclick="captureAndScan()" style="display:none">
+                <span id="captureBtnText">📸 Capture &amp; Scan</span>
+                <span id="captureBtnLoading" style="display:none"><span class="spinner"></span> Scanning...</span>
+              </button>
+              <button type="button" class="btn-ocr" id="btnLiveScan" onclick="toggleLiveScan()"
+                style="display:none;background:var(--green)">
+                <span id="liveScanText">🔴 Start Live Scan</span>
+              </button>
+              <button type="button" class="btn-ocr-red" id="btnStopCam" onclick="stopCamera()" style="display:none">⏹
+                Stop Camera</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="ocr-divider">Or enter manually</div>
+
+        <form id="productForm" novalidate>
+          <div class="field">
+            <label for="prodName">Product Name <span class="req">*</span></label>
+            <input type="text" id="prodName" placeholder="e.g. Milk 2L" required />
+          </div>
+
+          <div class="form-row">
+            <div class="field">
+              <label for="prodCategory">Category <span class="req">*</span></label>
+              <select id="prodCategory">
+                <option value="">Select category...</option>
+                <option value="Food">🍎 Food</option>
+                <option value="Medicine">💊 Medicine</option>
+                <option value="Household">🏠 Household</option>
+                <option value="Cosmetics">💄 Cosmetics</option>
+                <option value="Other">📦 Other</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Quantity &amp; Unit <span class="req">*</span></label>
+              <div class="qty-unit">
+                <input type="number" id="prodQty" placeholder="e.g. 2" min="0" />
+                <select id="prodUnit">
+                  <option value="pcs">pcs</option>
+                  <option value="kg">kg</option>
+                  <option value="L">L</option>
+                  <option value="mg">mg</option>
+                  <option value="boxes">boxes</option>
+                  <option value="bottles">bottles</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="field">
+              <label for="prodMfgDate">Manufacturing Date</label>
+              <input type="date" id="prodMfgDate" />
+            </div>
+            <div class="field">
+              <label for="prodExpiryDate">Expiry Date <span class="req">*</span></label>
+              <input type="date" id="prodExpiryDate" required />
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="prodNotes">Notes (Optional)</label>
+            <textarea id="prodNotes" rows="3"
+              placeholder="e.g. Keep refrigerated, store in cool dry place..."></textarea>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn-save" id="saveBtn">
+              <span id="btnText">💾 Save Product</span>
+              <span id="btnLoading" style="display:none"><span class="spinner"></span>Saving...</span>
+            </button>
+            <button type="button" class="btn-cancel" id="cancelBtn"
+              onclick="window.location.href='../inventory/inventory.html'">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { supabase } from '../../shared/js/supabase.js';
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      window.location.href = '../auth/login.html';
+    } else {
+      window.supabaseClient = supabase;
+      window.userId = session.user.id;
+      window.handleLogout = async function () {
+        await supabase.auth.signOut();
+        window.location.href = '../auth/login.html';
+      };
+
+      window.loadEditProduct = async function (id) {
+        const { data } = await supabase.from('products').select('*').eq('id', id).single();
+        if (data && data.user_id === window.userId) {
+          document.getElementById('prodName').value = data.name;
+          document.getElementById('prodCategory').value = data.category || '';
+          document.getElementById('prodQty').value = data.quantity || '';
+          if (data.mfg_date) document.getElementById('prodMfgDate').value = data.mfg_date;
+          if (data.expiry_date) document.getElementById('prodExpiryDate').value = data.expiry_date;
+        }
+      };
+    }
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
+  <script type="module">
+    import { OCR_API } from '../../shared/js/config.js';
+    window.OCR_API_URL = OCR_API;
+  </script>
+  <script>
+    const OCR_API = () => window.OCR_API_URL || 'https://ebi-project.vercel.app/api/extract-expiry';
+
+    // ── Form init ─────────────────────────────────────────────────────────
+    const params = new URLSearchParams(window.location.search);
+    const editId = params.get('id');
+    if (editId) {
+      document.getElementById('pageTitle').textContent = 'Edit Product';
+      document.getElementById('formHeading').textContent = 'Edit Product';
+      document.getElementById('btnText').textContent = '💾 Update Product';
+      // Load product data from Supabase
+      setTimeout(() => { if (window.loadEditProduct) window.loadEditProduct(editId); }, 200);
+    }
+
+    document.getElementById('productForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errorBox = document.getElementById('errorBox');
+      const successBox = document.getElementById('successBox');
+      const saveBtn = document.getElementById('saveBtn');
+      const btnText = document.getElementById('btnText');
+      const btnLoading = document.getElementById('btnLoading');
+      errorBox.classList.remove('show');
+      successBox.classList.remove('show');
+
+      const name = document.getElementById('prodName').value.trim();
+      const cat = document.getElementById('prodCategory').value;
+      const qty = document.getElementById('prodQty').value;
+      const expiry = document.getElementById('prodExpiryDate').value;
+      const mfg = document.getElementById('prodMfgDate').value;
+
+      if (!name) { errorBox.textContent = '⚠️ Product name is required.'; errorBox.classList.add('show'); return; }
+      if (!cat) { errorBox.textContent = '⚠️ Please select a category.'; errorBox.classList.add('show'); return; }
+      if (!expiry) { errorBox.textContent = '⚠️ Expiry date is required.'; errorBox.classList.add('show'); return; }
+      if (mfg && expiry && new Date(expiry) <= new Date(mfg)) { errorBox.textContent = '⚠️ Expiry date must be after manufacturing date.'; errorBox.classList.add('show'); return; }
+
+      saveBtn.disabled = true;
+      btnText.style.display = 'none';
+      btnLoading.style.display = 'inline';
+
+      try {
+        const payload = {
+          user_id: window.userId,
+          name: name,
+          category: cat,
+          quantity: qty ? parseInt(qty) : 1,
+          expiry_date: expiry,
+          mfg_date: mfg || null
+        };
+
+        if (!window.supabaseClient) {
+          throw new Error('Supabase client not initialized yet. Please wait a moment and try again.');
+        }
+
+        let error;
+        if (editId) {
+          const res = await window.supabaseClient.from('products').update(payload).eq('id', editId);
+          error = res.error;
+        } else {
+          const res = await window.supabaseClient.from('products').insert([payload]);
+          error = res.error;
+        }
+
+        if (error) {
+          errorBox.textContent = '⚠️ ' + error.message;
+          errorBox.classList.add('show');
+          saveBtn.disabled = false;
+          btnText.style.display = 'inline';
+          btnLoading.style.display = 'none';
+          return;
+        }
+      } catch (err) {
+        errorBox.textContent = '⚠️ Error: ' + err.message;
+        errorBox.classList.add('show');
+        saveBtn.disabled = false;
+        btnText.style.display = 'inline';
+        btnLoading.style.display = 'none';
+        return;
+      }
+
+      saveBtn.disabled = false;
+      btnText.style.display = 'inline';
+      btnLoading.style.display = 'none';
+      successBox.textContent = '✅ Product saved! Redirecting to inventory...';
+      successBox.classList.add('show');
+      setTimeout(() => window.location.href = '../inventory/inventory.html', 1500);
+    });
+
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('overlay').classList.toggle('open');
+    }
+
+    // ── TAB SWITCHER ──────────────────────────────────────────────────────
+    function switchOcrTab(tab) {
+      document.getElementById('tabUpload').classList.toggle('active', tab === 'upload');
+      document.getElementById('tabCamera').classList.toggle('active', tab === 'camera');
+      document.getElementById('panelUpload').classList.toggle('active', tab === 'upload');
+      document.getElementById('panelCamera').classList.toggle('active', tab === 'camera');
+      if (tab !== 'camera') stopCamera();
+    }
+
+    // ── SEND IMAGE BLOB TO REAL OCR API ───────────────────────────────────
+    async function sendToOCR(blob) {
+      const errorBox = document.getElementById('errorBox');
+      const successBox = document.getElementById('successBox');
+      errorBox.classList.remove('show');
+      successBox.classList.remove('show');
+
+      const formData = new FormData();
+      formData.append('file', blob, 'scan.jpg');
+
+      let res;
+      try {
+        res = await fetch(OCR_API(), { method: 'POST', body: formData });
+      } catch (networkErr) {
+        // This catches true network-level failures
+        let reason = networkErr.message;
+        if (reason === 'Failed to fetch') {
+          reason = 'Cannot reach the OCR server. Possible causes:\n• No internet connection\n• Server is down\n• CORS policy blocked the request';
+        }
+        errorBox.innerHTML = `❌ <strong>Network Error:</strong> ${reason.replace(/\n/g, '<br>• ')}`;
+        errorBox.classList.add('show');
+        return;
+      }
+
+      // HTTP-level errors (4xx, 5xx)
+      if (!res.ok) {
+        let body = '';
+        try { body = await res.text(); } catch (_) {}
+        let reason = `HTTP ${res.status} ${res.statusText}`;
+        if (res.status === 422) reason += ' — Image could not be processed (unsupported format or corrupted file)';
+        else if (res.status === 500) reason += ' — Server crashed. Detail: ' + (body.slice(0, 120) || 'none');
+        else if (res.status === 503) reason += ' — Server is starting up (cold start). Try again in a few seconds.';
+        else if (body) reason += ' — ' + body.slice(0, 120);
+        errorBox.innerHTML = `❌ <strong>API Error:</strong> ${reason}`;
+        errorBox.classList.add('show');
+        return;
+      }
+
+      let data;
+      try {
+        data = await res.json();
+      } catch (jsonErr) {
+        errorBox.textContent = '❌ Invalid response from server (not JSON). The API may be misconfigured.';
+        errorBox.classList.add('show');
+        return;
+      }
+
+      let filled = [];
+
+      // Auto-fill name
+      if (data.name && data.name !== 'Unknown') {
+        document.getElementById('prodName').value = data.name;
+        filled.push('Name');
+      }
+
+      // Auto-fill category
+      if (data.category && data.category !== 'Other') {
+        const catSelect = document.getElementById('prodCategory');
+        const opts = [...catSelect.options].map(o => o.value.toLowerCase());
+        const idx = opts.indexOf(data.category.toLowerCase());
+        if (idx >= 0) { catSelect.selectedIndex = idx; filled.push('Category'); }
+      }
+
+      // Auto-fill manufacturing date
+      if (data.mfg_date && data.mfg_date !== 'Not found') {
+        document.getElementById('prodMfgDate').value = data.mfg_date;
+        filled.push('Mfg Date');
+      }
+
+      // Auto-fill expiry date
+      if (data.expiry && data.expiry !== 'Not found') {
+        document.getElementById('prodExpiryDate').value = data.expiry;
+        filled.push('Expiry Date');
+      }
+
+      if (filled.length > 0) {
+        successBox.textContent = `✅ Detected: ${filled.join(' · ')}. Review the fields below and save.`;
+      } else {
+        successBox.innerHTML = `⚠️ Scanned but no product details detected.<br><small>Raw text found: <em>${(data.raw_text || '(empty)').slice(0, 100)}</em></small>`;
+      }
+      successBox.classList.add('show');
+    }
+
+    // ── UPLOAD + CROP ─────────────────────────────────────────────────────
+    let cropperInstance = null;
+
+    function loadImageForCrop(files) {
+      if (!files || files.length === 0) return;
+      const file = files[0];
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = document.getElementById('cropImage');
+        img.src = e.target.result;
+        document.getElementById('cropContainer').style.display = 'block';
+        document.getElementById('uploadDefaultBtn').style.display = 'none';
+        document.getElementById('cropActions').style.display = 'flex';
+        // Init Cropper.js
+        if (cropperInstance) cropperInstance.destroy();
+        cropperInstance = new Cropper(img, {
+          viewMode: 1,
+          movable: true,
+          zoomable: true,
+          scalable: false,
+          autoCropArea: 0.6,
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function scanCroppedImage() {
+      if (!cropperInstance) return;
+      const scanText = document.getElementById('cropScanText');
+      const scanLoad = document.getElementById('cropScanLoading');
+      const btn = document.getElementById('btnScanCrop');
+      btn.disabled = true;
+      scanText.style.display = 'none';
+      scanLoad.style.display = 'inline';
+
+      // Get cropped canvas → blob
+      cropperInstance.getCroppedCanvas({ maxWidth: 1200 }).toBlob(async (blob) => {
+        await sendToOCR(blob);
+        btn.disabled = false;
+        scanText.style.display = 'inline';
+        scanLoad.style.display = 'none';
+      }, 'image/jpeg', 0.92);
+    }
+
+    // ── LIVE CAMERA ───────────────────────────────────────────────────────
+    let cameraStream = null;
+    let liveScanInterval = null;
+    let isLiveScanning = false;
+
+    async function startCamera() {
+      const video = document.getElementById('cameraStream');
+      const btnStart = document.getElementById('btnStartCam');
+      const btnCapture = document.getElementById('btnCapture');
+      const btnLiveScan = document.getElementById('btnLiveScan');
+      const btnStop = document.getElementById('btnStopCam');
+      try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 } } });
+        video.srcObject = cameraStream;
+        video.style.display = 'block';
+        btnStart.style.display = 'none';
+        btnCapture.style.display = 'inline';
+        btnLiveScan.style.display = 'inline';
+        btnStop.style.display = 'inline';
+      } catch (err) {
+        document.getElementById('errorBox').textContent = '❌ Camera access denied: ' + err.message;
+        document.getElementById('errorBox').classList.add('show');
+      }
+    }
+
+    function stopCamera() {
+      const video = document.getElementById('cameraStream');
+      if (isLiveScanning) toggleLiveScan(); // stop live scan first
+      if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
+      video.style.display = 'none';
+      document.getElementById('btnStartCam').style.display = 'inline';
+      document.getElementById('btnCapture').style.display = 'none';
+      document.getElementById('btnLiveScan').style.display = 'none';
+      document.getElementById('btnStopCam').style.display = 'none';
+    }
+
+    function captureFrame() {
+      const video = document.getElementById('cameraStream');
+      const canvas = document.getElementById('cameraCanvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0);
+      return new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+    }
+
+    async function captureAndScan() {
+      const captureText = document.getElementById('captureBtnText');
+      const captureLoad = document.getElementById('captureBtnLoading');
+      const btn = document.getElementById('btnCapture');
+      btn.disabled = true;
+      captureText.style.display = 'none';
+      captureLoad.style.display = 'inline';
+      const blob = await captureFrame();
+      await sendToOCR(blob);
+      btn.disabled = false;
+      captureText.style.display = 'inline';
+      captureLoad.style.display = 'none';
+    }
+
+    function toggleLiveScan() {
+      const liveScanText = document.getElementById('liveScanText');
+      isLiveScanning = !isLiveScanning;
+
+      if (isLiveScanning) {
+        liveScanText.textContent = '⏸ Stop Live Scan';
+        document.getElementById('btnLiveScan').style.background = '#e53935';
+        // Scan immediately, then every 3 seconds
+        (async function scanLoop() {
+          if (!isLiveScanning) return;
+          const blob = await captureFrame();
+          await sendToOCR(blob);
+          if (isLiveScanning) liveScanInterval = setTimeout(scanLoop, 3000);
+        })();
+      } else {
+        liveScanText.textContent = '🔴 Start Live Scan';
+        document.getElementById('btnLiveScan').style.background = 'var(--green)';
+        clearTimeout(liveScanInterval);
+      }
+    }
+  </script>
+</body>
+
+</html>

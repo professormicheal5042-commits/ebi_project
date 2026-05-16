@@ -1,0 +1,11 @@
+Purpose of the Project (public\purpose.txt content):
+The goal of this final-year project is to develop a simple yet intelligent Product Expiry Management System that helps users (households, small shops, pharmacies) track products, get timely alerts before they expire, and reduce waste.
+The system will allow users to add products (manually or via photo), view their inventory with expiry status, receive personalized notifications, and see basic usage insights. It demonstrates the use of modern web technologies + a basic Python algorithm for prioritization and simple prediction.
+Key Benefits:
+
+Reduce food/medication waste
+Save money
+Ensure safety (especially for medicines)
+Provide a user-friendly mobile-responsive web app
+
+This aligns with your project document's aim: an AI-powered expiry alert system, but simplified for your current skill set (HTML, CSS, JS + Supabase) while incorporating a Python backend component for the "algorithm" requirement.

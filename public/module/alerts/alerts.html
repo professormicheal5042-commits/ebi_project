@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Alerts — EBI Expiry Alert System</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="./alerts.css" />
+</head>
+
+<body>
+  <div class="sidebar-overlay" id="overlay" onclick="toggleSidebar()"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-logo">
+      <div class="sb-logo-icon">🌿</div>
+      <div>
+        <div class="sb-logo-text">EBI System</div>
+        <div class="sb-logo-sub">AI Expiry Guard</div>
+      </div>
+    </div>
+    <nav class="sb-nav">
+      <a class="sb-link" href="../dashboard/dashboard.html"><span class="sb-icon">📊</span> Dashboard</a>
+      <a class="sb-link" href="../inventory/inventory.html"><span class="sb-icon">📦</span> Inventory</a>
+      <a class="sb-link" href="../add_product/add_product.html"><span class="sb-icon">➕</span> Add Product</a>
+      <a class="sb-link active" href="alerts.html"><span class="sb-icon">🔔</span> Alerts <span class="sb-badge"
+          id="alertBadge">3</span></a>
+      <a class="sb-link" href="../reports/reports.html"><span class="sb-icon">📈</span> Reports</a>
+      <a class="sb-link" href="../profile/profile.html"><span class="sb-icon">👤</span> Profile</a>
+    </nav>
+    <div class="sb-divider"></div>
+    <div class="sb-footer"><button class="sb-logout" onclick="handleLogout()">🚪 Logout</button></div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <button class="hamburger" onclick="toggleSidebar()">☰</button>
+      <h1>Alerts &amp; Notifications</h1>
+    </div>
+    <div class="content">
+      <div class="filter-tabs">
+        <button class="tab active" onclick="filterAlerts('all', this)">All</button>
+        <button class="tab" onclick="filterAlerts('expired', this)">🚨 Expired</button>
+        <button class="tab" onclick="filterAlerts('soon', this)">⚠️ Expiring Soon</button>
+      </div>
+
+      <div class="alert-list" id="alertsList"></div>
+      <div class="empty-state" id="emptyState" style="display:none;">
+        <div style="font-size:48px;">✅</div>
+        <p>No active alerts — all products are safe!</p>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { supabase } from '../../shared/js/supabase.js';
+
+    // 1. ROUTE GUARD & SESSION
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      window.location.href = '../auth/login.html';
+    }
+    const userId = session.user.id;
+
+    let alerts = [];
+    let currentFilter = 'all';
+
+    async function loadAlerts() {
+      const { data } = await supabase
+        .from('products')
+        .select('*')
+        .eq('user_id', userId);
+      
+      if (data) {
+        const nowMs = new Date().getTime();
+        const readAlerts = JSON.parse(localStorage.getItem('readAlerts') || '[]');
+        
+        alerts = [];
+        data.forEach(p => {
+          const expDate = new Date(p.expiry_date).getTime();
+          const daysLeft = Math.ceil((expDate - nowMs) / 86400000);
+          
+          if (daysLeft <= 7) {
+            alerts.push({
+              id: p.id,
+              name: p.name,
+              category: p.category || 'Other',
+              status: daysLeft < 0 ? 'expired' : 'soon',
+              days: daysLeft,
+              read: readAlerts.includes(p.id)
+            });
+          }
+        });
+        
+        // Sort: unread first, then by days left
+        alerts.sort((a,b) => {
+          if (a.read !== b.read) return a.read ? 1 : -1;
+          return a.days - b.days;
+        });
+        
+        window.renderAlerts();
+      }
+    }
+
+    window.daysText = function(days) {
+      if (days < 0) return Math.abs(days) + ' day(s) ago';
+      return days + ' day(s) left';
+    }
+
+    window.renderAlerts = function() {
+      const list = document.getElementById('alertsList');
+      const empty = document.getElementById('emptyState');
+      const filtered = currentFilter === 'all' ? alerts : alerts.filter(a => a.status === currentFilter);
+      
+      // Update badge
+      const unread = alerts.filter(a => !a.read).length;
+      const alertBadge = document.getElementById('alertBadge');
+      if (alertBadge) {
+        alertBadge.textContent = unread;
+        alertBadge.style.display = unread ? 'inline' : 'none';
+      }
+
+      if (!filtered.length) { list.innerHTML = ''; empty.style.display = 'block'; return; }
+      empty.style.display = 'none';
+      
+      list.innerHTML = filtered.map(a => `
+        <div class="alert-card ${a.read ? 'read' : ''}" id="alert-${a.id}" onclick="viewProduct('${a.id}')">
+          <div class="alert-sev ${a.status}">${a.status === 'expired' ? '🚨' : '⚠️'}</div>
+          <div class="alert-body">
+            <div class="alert-name">${a.name}</div>
+            <div class="alert-meta">${a.category} · <span class="badge ${a.status}">${a.status === 'expired' ? 'EXPIRED' : 'EXPIRING SOON'}</span></div>
+          </div>
+          <div class="alert-right">
+            <div class="days-chip ${a.days < 0 ? 'neg' : 'soon'}">${window.daysText(a.days)}</div>
+            ${a.read
+              ? '<span class="read-check">✓ Read</span>'
+              : `<button class="btn-read" onclick="markRead(event,'${a.id}')">Mark as Read</button>`}
+          </div>
+        </div>`).join('');
+    }
+
+    window.markRead = function(e, id) {
+      e.stopPropagation();
+      const alert = alerts.find(a => String(a.id) === String(id));
+      if (alert) { 
+        alert.read = true; 
+        const readAlerts = JSON.parse(localStorage.getItem('readAlerts') || '[]');
+        if (!readAlerts.includes(id)) {
+          readAlerts.push(id);
+          localStorage.setItem('readAlerts', JSON.stringify(readAlerts));
+        }
+      }
+      window.renderAlerts();
+    }
+
+    window.viewProduct = function(id) {
+      window.location.href = '../product_detail/product_detail.html?id=' + id;
+    }
+
+    window.filterAlerts = function(type, btn) {
+      currentFilter = type;
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      btn.classList.add('active');
+      window.renderAlerts();
+    }
+
+    window.toggleSidebar = function() {
+      document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('overlay').classList.toggle('open');
+    }
+
+    window.handleLogout = async function() {
+      await supabase.auth.signOut();
+      window.location.href = '../auth/login.html';
+    }
+
+    loadAlerts();
+  </script>
+</body>
+
+</html>

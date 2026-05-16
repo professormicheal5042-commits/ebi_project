@@ -1,0 +1,585 @@
+=========================================================================
+  3-DAY TODO LIST — AI-POWERED PRODUCT EXPIRY ALERT MANAGEMENT SYSTEM
+=========================================================================
+Student     : JEPHTHAH EBIAYIFHAGA (MAT. NO. FOC/23/009541)
+Institution : Southern Delta University, Ozoro
+Stack       : HTML / CSS / JavaScript + Supabase
+Daily Time  : 2 Hours Per Day
+=========================================================================
+
+PROJECT FOLDER STRUCTURE (Modular)
+====================================
+  /ebi_project
+    /modules
+      /auth
+          login.html
+          register.html
+          auth.js
+      /dashboard
+          dashboard.html
+          dashboard.js
+      /products
+          add-product.html
+          product-detail.html
+          products.js
+      /inventory
+          inventory.html
+          inventory.js
+      /alerts
+          alerts.html
+          alerts.js
+      /reports
+          reports.html
+          reports.js
+      /profile
+          profile.html
+          profile.js
+    /css
+          style.css       (global styles, colors, typography)
+          sidebar.css     (sidebar layout and nav styles)
+    /js
+          supabase.js     (Supabase client — shared)
+
+SIDEBAR NAVIGATION LAYOUT (All authenticated screens)
+=======================================================
+  ┌──────────────┬──────────────────────────────────────┐
+  │   SIDEBAR    │           MAIN CONTENT               │
+  │              │                                      │
+  │  [Logo]      │  (Page content renders here)         │
+  │  ExpiryAI    │                                      │
+  │  ──────────  │                                      │
+  │  Dashboard   │                                      │
+  │  Inventory   │                                      │
+  │  Add Product │                                      │
+  │  Alerts [3]  │                                      │
+  │  Reports     │                                      │
+  │  Profile     │                                      │
+  │  ──────────  │                                      │
+  │  Logout      │                                      │
+  └──────────────┴──────────────────────────────────────┘
+  - Sidebar is fixed on the left (width: 220px)
+  - Active link is highlighted with accent color + left border bar
+  - Alerts link shows live badge with unread count
+  - Sidebar collapses to icon-only on mobile (hamburger toggle)
+
+OBJECTIVE ALIGNMENT
+====================
+  Day 1 => Objective ii  : Design all UI screens (static HTML/CSS)
+  Day 2 => Objective i   : Supabase backend — DB, Auth, RLS
+  Day 3 => Objective iii : Connect UI to backend, logic, test, polish
+=========================================================================
+
+
+=======================================================================
+  DAY 1 — FULL UI DESIGN (Static HTML & CSS)  [0:00 – 2:00 hrs]
+  Goal: Build every screen as a styled, static HTML page in its module.
+=======================================================================
+
+[x] TASK 1  (0:00 – 0:20)  Project Setup & Global Styles
+    ─────────────────────────────────────────────────────
+    - Create the full modular folder structure shown above.
+    - css/style.css — global design tokens:
+        Background     : #0f172a (dark navy)
+        Card color     : #1e293b
+        Accent color   : #6366f1 (indigo)
+        Success/Safe   : #22c55e (green)
+        Warning/Expiring: #f97316 (orange)
+        Danger/Expired : #ef4444 (red)
+        Text primary   : #f1f5f9
+        Text muted     : #94a3b8
+        Font           : Inter (Google Fonts CDN in <head>)
+        Base styles    : box-sizing reset, body margin 0, overflow-x hidden
+        Card styles    : rounded-lg, soft shadow, padding 1.5rem
+        Badge styles   : pill-shaped inline labels — Safe/Expiring/Expired
+        Button styles  : primary (indigo fill), secondary (outline), danger
+        Input styles   : dark bg, border on focus (indigo glow)
+        Toast styles   : fixed bottom-right, slide-in animation
+    - css/sidebar.css — sidebar layout:
+        .layout wrapper: display flex, height 100vh
+        .sidebar: fixed left, width 220px, full height, dark bg
+        .sidebar logo: ExpiryAI branding + icon at top
+        .sidebar nav-links: vertical list, icon + label per item
+        .sidebar .active: indigo left border + lighter background
+        .sidebar .badge: small red circle for alerts count
+        .main-content: margin-left 220px, flex-grow 1, overflow-y auto
+        Mobile: sidebar hidden by default, hamburger button shown
+    - Link Google Fonts, style.css, and sidebar.css in every HTML file.
+
+[x] TASK 2  (0:20 – 0:40)  MODULE: AUTH  (/modules/auth/)
+    ─────────────────────────────────────────────────────
+    - modules/auth/login.html  (Login Screen):
+        Full-page centered layout (NO sidebar — pre-auth screen)
+        Card (max-width 420px, centered vertically & horizontally):
+            App icon + "ExpiryAI" title
+            Tagline: "Smart Product Expiry Management"
+            Email input (type="email", id="loginEmail")
+            Password input (type="password", id="loginPassword")
+            [Login] primary full-width button (id="loginBtn")
+            "Forgot Password?" text link
+            "Don't have an account? Register" link to register.html
+            Error message div (id="loginError", hidden by default)
+    - modules/auth/register.html  (Register Screen):
+        Same full-page centered layout (NO sidebar)
+        Card with heading "Create Your Account":
+            Full Name input (id="regName")
+            Email input (id="regEmail")
+            Password input (id="regPassword")
+            Confirm Password input (id="regConfirm")
+            [Create Account] primary full-width button (id="regBtn")
+            "Already have an account? Login" link
+            Error message div (id="regError", hidden)
+
+[x] TASK 3  (0:40 – 1:05)  MODULE: DASHBOARD  (/modules/dashboard/)
+    ──────────────────────────────────────────────────────────────────
+    - modules/dashboard/dashboard.html:
+        Include sidebar (mark "Dashboard" link as active)
+        MAIN CONTENT area:
+            TOP BAR:
+                Left: Page title "Dashboard"
+                Left below: "Good Morning, [Name]!" greeting (id="greeting")
+                Right: [+ Add Product] button → ../products/add-product.html
+
+            SUMMARY CARDS ROW (4 cards, CSS Grid):
+                Card 1 — Total Products   (blue icon)
+                    Large number (id="totalCount")
+                    Label: "Total Products"
+                Card 2 — Expiring Soon    (orange icon, warning)
+                    Large number (id="expiringCount")
+                    Label: "Expiring Soon" + note "< 7 days"
+                Card 3 — Expired          (red icon, danger)
+                    Large number (id="expiredCount")
+                    Label: "Expired" + note "Action Required"
+                Card 4 — Safe / OK        (green icon)
+                    Large number (id="safeCount")
+                    Label: "Safe" + note "All Good"
+
+            TWO-COLUMN ROW:
+                LEFT (65%) — Recent Alerts Panel:
+                    Heading: "Recent Alerts — Requires Attention"
+                    Table (id="recentAlertsTable"):
+                        Columns: Product | Status badge | Days Left | Action
+                        5 hardcoded dummy rows (replaced on Day 3)
+                        [View] button per row → product-detail.html
+                    "View All Alerts →" link (id="viewAllAlertsLink")
+                RIGHT (35%) — Stock Overview Mini Chart:
+                    Heading: "Stock Overview"
+                    Safe bar       (id="safeBar")
+                    Expiring bar   (id="expiringBar")
+                    Expired bar    (id="expiredBar")
+                    Category pills: Food | Medicine | Household | Other
+
+[x] TASK 4  (1:05 – 1:25)  MODULE: INVENTORY & PRODUCTS
+    ───────────────────────────────────────────────────────
+    - modules/inventory/inventory.html  (Product List):
+        Include sidebar (mark "Inventory" as active)
+        MAIN CONTENT:
+            Top: "My Inventory" title + [+ Add Product] button
+            Filter row:
+                Search input (id="searchInput", placeholder "Search products...")
+                Category dropdown (id="categoryFilter"):
+                    All Categories / Food / Medicine / Household / Other
+            Responsive table (id="inventoryTable"):
+                Columns: # | Name | Category | Qty | Expiry Date
+                         | Days Left | Status | Actions
+                5 dummy rows — one of each status for visual demo
+                Action buttons per row: [View] [Edit] [Delete]
+            Empty-state div (id="emptyState", hidden): "No products yet!"
+
+    - modules/products/product-detail.html  (Single Product View):
+        Include sidebar
+        MAIN CONTENT:
+            "< Back to Inventory" link (top left)
+            Full-width status banner (id="statusBanner"):
+                Background changes: red=Expired, orange=Expiring, green=Safe
+                Text: "EXPIRED" / "EXPIRING SOON" / "SAFE"
+            Product detail card:
+                Product Name  (id="prodName", large heading)
+                Category      (id="prodCategory")
+                Quantity + Unit (id="prodQty")
+                Mfg Date      (id="prodMfgDate")
+                Expiry Date   (id="prodExpiryDate")
+                Days Left     (id="prodDaysLeft", large bold colored number)
+                Notes         (id="prodNotes")
+                Date Added    (id="prodCreatedAt")
+            Action buttons: [Edit Product] [Delete Product]
+
+    - modules/products/add-product.html  (Add/Edit Form):
+        Include sidebar (mark "Add Product" as active)
+        MAIN CONTENT:
+            Page title: "Add New Product" (changes to "Edit Product" if editing)
+            OCR Scan Section: Upload photo (image picker) → simulate OCR → auto-fill expiry
+            Form card (id="productForm", max-width 560px):
+                Product Name   (id="prodName", text, required)
+                Category       (id="prodCategory", select)
+                Quantity       (id="prodQty", number) + Unit (id="prodUnit", select)
+                Mfg Date       (id="prodMfgDate", date, optional)
+                Expiry Date    (id="prodExpiryDate", date, required*)
+                Notes          (id="prodNotes", textarea)
+            Buttons: [Save Product] (id="saveBtn")  [Cancel] (id="cancelBtn")
+
+[x] TASK 5  (1:25 – 2:00)  MODULES: ALERTS, REPORTS & PROFILE
+    ─────────────────────────────────────────────────────────────
+    - modules/alerts/alerts.html  (Alerts & Notifications):
+        Include sidebar (mark "Alerts" as active, show badge)
+        MAIN CONTENT:
+            Title "Alerts & Notifications"
+            Filter row: [All] [Expired] [Expiring Soon] toggle buttons
+            Alerts list (id="alertsList"):
+                Each alert card:
+                    Left: warning icon colored by severity
+                    Middle: Product name + Status badge + "X days overdue / left"
+                    Right: [Mark as Read] button (id="markRead-{id}")
+                    Read cards: faded opacity, checkmark icon
+            Empty-state div: "No active alerts — all products are safe!"
+
+    - modules/reports/reports.html  (Reports & Analytics):
+        Include sidebar (mark "Reports" as active)
+        MAIN CONTENT:
+            Title "Reports & Analytics"
+            Overall Status Chart section:
+                3 CSS horizontal bars (Safe / Expiring / Expired)
+                Each bar: colored fill + label + count + percentage
+            Category Breakdown table:
+                Columns: Category | Total | Safe | Expiring Soon | Expired
+                Dummy rows for 4 categories
+            [Export CSV] placeholder button (bottom right)
+
+    - modules/profile/profile.html  (Profile & Settings):
+        Include sidebar (mark "Profile" as active)
+        MAIN CONTENT:
+            User avatar circle (initials, indigo background)
+            Account info card (read-only):
+                Name, Email, Role: User, Date Joined
+            Change Password card:
+                New Password input + Confirm Password input
+                [Update Password] button
+                Success/error message area
+            [Logout Account] danger button (bottom of page)
+
+=======================================================================
+  DAY 1 DONE: All 9 screens built as styled static HTML in their
+              respective module folders. Sidebar layout complete.
+=======================================================================
+
+
+=======================================================================
+  DAY 2 — BACKEND SETUP (Supabase)  [0:00 – 2:00 hrs]
+  Goal: Create database, auth, RLS policies, scaffold JS modules.
+=======================================================================
+
+[x] TASK 6  (0:00 – 0:30)  Supabase Project & Database Tables
+    ────────────────────────────────────────────────────────────
+    - Create Supabase project: "ebi_expiry_system" at supabase.com
+    - Save Project URL and anon key (needed for js/supabase.js on Day 3)
+    - Create products table (SQL Editor):
+        id          UUID PRIMARY KEY DEFAULT uuid_generate_v4()
+        user_id     UUID REFERENCES auth.users(id) ON DELETE CASCADE
+        name        TEXT NOT NULL
+        category    TEXT
+        quantity    NUMERIC DEFAULT 1
+        unit        TEXT DEFAULT 'pcs'
+        mfg_date    DATE
+        expiry_date DATE NOT NULL
+        notes       TEXT
+        created_at  TIMESTAMP DEFAULT now()
+    - Create alerts table:
+        id           UUID PRIMARY KEY DEFAULT uuid_generate_v4()
+        product_id   UUID REFERENCES products(id) ON DELETE CASCADE
+        user_id      UUID REFERENCES auth.users(id) ON DELETE CASCADE
+        alert_type   TEXT NOT NULL   -- 'Expiring Soon' or 'Expired'
+        triggered_at TIMESTAMP DEFAULT now()
+        is_read      BOOLEAN DEFAULT false
+    - Create profiles table (for Full Name from registration):
+        id           UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE
+        full_name    TEXT NOT NULL
+        created_at   TIMESTAMP DEFAULT now()
+    - Create usage_logs table (for consumption tracking in Product Details):
+        id           UUID PRIMARY KEY DEFAULT uuid_generate_v4()
+        product_id   UUID REFERENCES products(id) ON DELETE CASCADE
+        user_id      UUID REFERENCES auth.users(id) ON DELETE CASCADE
+        action       TEXT NOT NULL   -- e.g., 'consumed', 'wasted'
+        quantity     NUMERIC NOT NULL
+        logged_at    TIMESTAMP DEFAULT now()
+
+[x] TASK 7  (0:30 – 1:00)  Row Level Security (RLS)
+    ─────────────────────────────────────────────────
+    - Enable RLS on products, alerts, profiles, and usage_logs tables
+    - Add 4 policies per table (SELECT, INSERT, UPDATE, DELETE):
+        WHERE user_id = auth.uid()  -- users only access their own data
+        (For profiles, WHERE id = auth.uid())
+    - Test RLS in Supabase Table Editor with a test session
+
+[x] TASK 8  (1:00 – 1:30)  Supabase Auth Configuration & Test Data
+    ─────────────────────────────────────────────────────────────────
+    - Enable Email/Password auth, disable email confirmation (dev mode)
+    - Set Site URL: https://ebi-expiry-system.web.app/
+    - Create 2 test users in Auth > Users:
+        test1@example.com / Test1234
+        test2@example.com / Test1234
+    - Insert 5 sample products for test1:
+        Milk 2L         — Food     — expiry: 2 days ago    (Expired)
+        Paracetamol     — Medicine — expiry: today         (Expired)
+        Yogurt 500g     — Food     — expiry: 3 days ahead  (Expiring)
+        Bread Loaf      — Food     — expiry: 6 days ahead  (Expiring)
+        Rice 5kg        — Food     — expiry: 80 days ahead (Safe)
+
+[ ] TASK 9  (1:30 – 2:00)  JavaScript Module Scaffolding
+    ────────────────────────────────────────────────────
+    - js/supabase.js:
+        Initialize Supabase client (URL + anon key)
+        Export { supabase }
+    - modules/auth/auth.js:
+        signUp(email, password, name)
+        signIn(email, password)
+        signOut()
+        getUser()
+        routeGuard()  -- redirect to login if no session
+    - modules/products/products.js:
+        addProduct(data)
+        getProducts()
+        getProductById(id)
+        updateProduct(id, data)
+        deleteProduct(id)
+    - modules/dashboard/dashboard.js:
+        getDashboardStats(products) -- returns { total, expiring, expired, safe }
+        getRecentAlerts(products)   -- returns top 5 by daysLeft asc
+    - modules/alerts/alerts.js:
+        getAlerts()
+        markAlertRead(id)
+        insertAlertRecord(productId, alertType)
+    - All files: functions only, no DOM calls yet — that is Day 3.
+
+[ ] TASK 10 (2:00 – 2:30)  Python OCR API Setup with FastAPI + Vercel (FREE)
+    ─────────────────────────────────────────────────────────────
+    STEP 1 — Create the FastAPI project folder:
+        - Inside the project root, create a new folder: `api/`
+        - Create `api/index.py` with the following code:
+
+            from fastapi import FastAPI, File, UploadFile
+            from fastapi.middleware.cors import CORSMiddleware
+            import pytesseract
+            from PIL import Image
+            import io, re
+
+            app = FastAPI()
+            app.add_middleware(CORSMiddleware, allow_origins=["*"],
+                               allow_methods=["*"], allow_headers=["*"])
+
+            @app.post("/api/extract-expiry")
+            async def extract_expiry(file: UploadFile = File(...)):
+                contents = await file.read()
+                image = Image.open(io.BytesIO(contents))
+                text = pytesseract.image_to_string(image)
+                # Parse date (DD/MM/YYYY or MM/YYYY)
+                date_match = re.search(r'\b(\d{2}[\/\-]\d{2}[\/\-]\d{4}|\d{2}[\/\-]\d{4})\b', text)
+                expiry = date_match.group(0) if date_match else "Not found"
+                # Try to grab product name (first non-empty line)
+                lines = [l.strip() for l in text.splitlines() if l.strip()]
+                name = lines[0] if lines else "Unknown"
+                return {"name": name, "expiry": expiry, "raw_text": text}
+
+    STEP 2 — Create `api/requirements.txt`:
+            fastapi
+            uvicorn
+            python-multipart
+            pytesseract
+            Pillow
+
+    STEP 3 — Create `vercel.json` in project root:
+            {
+              "builds": [{ "src": "api/index.py", "use": "@vercel/python" }],
+              "routes": [{ "src": "/api/(.*)", "dest": "api/index.py" }]
+            }
+
+    STEP 4 — Deploy to Vercel (FREE, no credit card needed):
+        - Install Vercel CLI:  npm install -g vercel
+        - Login:               vercel login
+            * IF LOGIN FAILS ("user aborted a request"), use a token instead:
+              1. Go to https://vercel.com/account/tokens in your browser
+              2. Create a new token (name it "cli") and copy it
+              3. Deploy directly using the token:  vercel --prod --token YOUR_TOKEN_HERE
+        - Otherwise, deploy normally: vercel --prod
+        - Copy the live URL (e.g. `https://your-project.vercel.app`)
+
+    STEP 5 — OCR UI in add_product.html (DONE — two modes implemented):
+        MODE 1: 📁 Upload & Crop
+            - User clicks "Choose Image" and picks any photo from their device
+            - Cropper.js activates — user drags to select ONLY the expiry date area
+            - Clicking "✂️ Crop & Scan" sends the cropped region to the API
+            - Auto-fills: Product Name + Expiry Date from OCR response
+
+        MODE 2: 📷 Live Camera
+            - User clicks "▶️ Start Camera" → browser requests camera permission
+            - Live video stream appears (uses rear camera on mobile)
+            - User points camera at label, clicks "📸 Capture & Scan"
+            - Frame is captured from video and posted to OCR API
+            - Auto-fills: Product Name + Expiry Date from the response
+
+        OCR_API (live on Vercel):
+            https://ebi-project-gmtxqdv2r-ebi-expiring-product-s-projects.vercel.app/api/extract-expiry
+
+    NOTE: Vercel free tier = 100GB bandwidth/month + unlimited deployments.
+          Runs pytesseract as a serverless Python function, completely free.
+
+=======================================================================
+  DAY 2 DONE: Supabase live, tables created, RLS secured, auth set,
+              test data inserted, JS modules scaffolded, and FastAPI
+              OCR API deployed free on Vercel.
+=======================================================================
+
+
+=======================================================================
+  DAY 3 — UI USING BACKEND (Connect, Logic & Test)  [0:00 – 2:00]
+  Goal: Wire every module to live Supabase data, implement logic,
+        run full system test, and polish the UI.
+=======================================================================
+
+[x] TASK 10  (0:00 – 0:20)  MODULE: AUTH — Wiring Login & Register
+    ──────────────────────────────────────────────────────────────
+    - Link js/supabase.js + modules/auth/auth.js in login & register
+    - login.html: form submit → signIn() → redirect to dashboard.html
+        On error → show #loginError div with message
+    - register.html: form submit → validate → signUp() → dashboard.html
+        On error → show #regError div with message
+    - Add routeGuard() at top of all 7 authenticated module pages
+      (dashboard, inventory, add-product, product-detail, alerts,
+       reports, profile)
+    - Wire sidebar Logout link → signOut() → redirect to login.html
+
+[x] TASK 11  (0:20 – 0:45)  MODULE: DASHBOARD — Live Data
+    ──────────────────────────────────────────────────────
+    - Link JS files in dashboard.html
+    - On DOMContentLoaded:
+        getUser() → inject name into #greeting
+        getProducts() → compute daysLeft for each:
+            daysLeft = Math.ceil((new Date(expiry_date) - new Date()) / 86400000)
+        getDashboardStats() → inject counts into 4 Summary Cards
+        getRecentAlerts() → render top 5 rows in #recentAlertsTable
+            Replace dummy rows with live data + real badges
+        Compute bar percentages → update CSS width of 3 chart bars
+    - Wire "+ Add Product" button → ../products/add-product.html
+    - Wire "View All Alerts" link → ../alerts/alerts.html
+    - Wire [View] button in alert rows → ../products/product-detail.html?id=xxx
+
+[x] TASK 12  (0:45 – 1:05)  MODULE: INVENTORY & PRODUCTS — Live CRUD
+    ────────────────────────────────────────────────────────────────
+    - inventory.html:
+        getProducts() → render rows in #inventoryTable
+        Apply badge logic: daysLeft < 0 = Expired, <= 7 = Expiring, else Safe
+        Search bar keyup → filter visible rows by name
+        Category filter change → re-filter rows
+        [View] → redirect to product-detail.html?id=xxx
+        [Edit] → redirect to add-product.html?id=xxx
+        [Delete] → confirm dialog → deleteProduct(id) → remove row
+        Show #emptyState if no products
+    - product-detail.html:
+        Read id from URL: new URLSearchParams(location.search).get('id')
+        getProductById(id) → populate all #prod* fields
+        Set #statusBanner class/color based on daysLeft
+        [Edit] → redirect to add-product.html?id=xxx
+        [Delete] → confirm → deleteProduct(id) → redirect to inventory
+    - add-product.html (Manual Entry Completed):
+        Check URL for ?id= → if found: getProductById(id) → pre-fill form
+        Scan logic: Upload photo → simulate OCR (or call Python API) → auto-fill product details & expiry
+        Submit → if editing: updateProduct(id, data) / if adding: addProduct(data)
+        Save data securely to Supabase DB
+        Show success toast (green, bottom-right) → redirect to inventory
+        [Cancel] → redirect to inventory.html
+
+[ ] TASK 13  (1:05 – 1:20)  MODULES: ALERTS & REPORTS — Live Data
+    ────────────────────────────────────────────────────────────────
+    - alerts.html:
+        getProducts() → filter to Expired + Expiring Soon
+        For each: insertAlertRecord() if not already recorded today
+        getAlerts() → render #alertsList cards dynamically
+        Filter toggles → re-render filtered list
+        [Mark as Read] → markAlertRead(id) → fade card → decrease badge
+        Alert card click → product-detail.html?id=xxx
+        Show empty-state if no alerts
+    - reports.html:
+        getProducts() → compute per-category counts
+        Update 3 CSS bar widths as live percentages
+        Render category breakdown table with live numbers
+        [Export CSV] → generate CSV from product data → trigger download
+
+[ ] TASK 14  (1:20 – 1:30)  MODULE: PROFILE — Live Data
+    ────────────────────────────────────────────────────
+    - profile.html:
+        getUser() → display email + created date
+        [Update Password] → supabase.auth.updateUser({ password })
+          → show success/error message
+        [Logout Account] → signOut() → redirect to login.html
+
+[ ] TASK 15  (1:30 – 2:00)  Full System Test & Final Polish
+    ──────────────────────────────────────────────────────
+    - Run complete end-to-end test flow:
+        [ ] Register new account
+        [ ] Login → lands on Dashboard
+        [ ] Add 3 products: Expired / Expiring Soon / Safe
+        [ ] Dashboard cards show correct live counts
+        [ ] Recent Alerts panel shows correct urgent products
+        [ ] Inventory table shows all 3 rows with correct badges
+        [ ] View product → detail screen shows correct data
+        [ ] Edit product → change expiry date → update confirmed
+        [ ] Delete product → row removed from inventory
+        [ ] Alerts page lists only urgent products
+        [ ] Mark alert as read → fades + badge count decreases
+        [ ] Reports page shows live chart and category table
+        [ ] Profile shows correct email
+        [ ] Update password → success message shown
+        [ ] Logout → redirected to login.html
+        [ ] Try opening dashboard without login → redirected (routeGuard)
+        [ ] Test all pages on mobile (375px) → sidebar collapses correctly
+        [ ] Fix all browser console errors
+        [ ] Verify sidebar active states are correct on each page
+
+=======================================================================
+  DAY 3 DONE: All modules fully connected to Supabase. System tested,
+              polished, and ready for submission.
+=======================================================================
+
+=========================================================================
+  MODULES QUICK REFERENCE
+=========================================================================
+  Module         │ Files                                │ Day Built
+  ───────────────┼──────────────────────────────────────┼──────────
+  auth           │ login.html, register.html, auth.js   │ 1 (UI) + 3 (JS)
+  dashboard      │ dashboard.html, dashboard.js         │ 1 (UI) + 3 (JS)
+  inventory      │ inventory.html, inventory.js         │ 1 (UI) + 3 (JS)
+  products       │ add-product.html, product-detail.html│ 1 (UI) + 3 (JS)
+                 │ products.js                          │
+  alerts         │ alerts.html, alerts.js               │ 1 (UI) + 3 (JS)
+  reports        │ reports.html, reports.js             │ 1 (UI) + 3 (JS)
+  profile        │ profile.html, profile.js             │ 1 (UI) + 3 (JS)
+  shared         │ js/supabase.js                       │ 2 (Backend)
+  styles         │ css/style.css, css/sidebar.css       │ 1 (UI)
+=========================================================================
+
+=========================================================================
+  PYTHON AI / OCR INTEGRATION (ARCHITECTURE EXPLANATION)
+=========================================================================
+  While the UI demo currently simulates OCR with a loading spinner, the
+  actual AI intelligence is designed to be handled by Python:
+  
+  1. Image Capture: User clicks the image picker in `add_product.html` and uploads a photo of the product label.
+  2. Data Transfer: The frontend sends this image to a Python backend (e.g., Flask/FastAPI) or Supabase Storage.
+  3. OCR Processing: Python runs Optical Character Recognition (e.g., Tesseract, EasyOCR, or Google Vision) to read the raw text.
+  4. AI Parsing: Python uses an LLM or regex to parse the raw text, extracting the exact "Product Name" and "Expiry Date".
+  5. Response: Python returns structured JSON `{ "name": "Milk", "expiry_date": "2026-10-15" }` to the frontend.
+  6. Auto-fill & Save: The UI auto-fills the form fields. The user verifies it, clicks "Save", and the data is saved permanently to the Supabase Database.
+=========================================================================
+
+=========================================================================
+  RECOMMENDED HOSTING FOR PYTHON BACKEND (PythonAnywhere)
+=========================================================================
+  To host the Python script online for free without complex setups:
+  
+  1. What it is: A platform built specifically for hosting Python.
+  2. Why use it: It is extremely beginner-friendly. You don't even need to 
+     use GitHub; you can literally upload your Python file directly through 
+     their website and click "Run".
+  3. Cost: Free forever (with some limitations on internet access for 
+     scraping, but standard libraries and OCR work fine).
+=========================================================================
+  END OF 3-DAY TODO LIST
+=========================================================================

@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — EBI Expiry Alert System</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="./dashboard.css" />
+</head>
+
+<body>
+
+  <!-- Sidebar Overlay -->
+  <div class="sidebar-overlay" id="overlay" onclick="toggleSidebar()"></div>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-logo">
+      <div class="sb-logo-icon">🌿</div>
+      <div>
+        <div class="sb-logo-text">EBI System</div>
+        <div class="sb-logo-sub">AI Expiry Guard</div>
+      </div>
+    </div>
+    <nav class="sb-nav">
+      <a class="sb-link active" href="dashboard.html"><span class="sb-icon">📊</span> Dashboard</a>
+      <a class="sb-link" href="../inventory/inventory.html"><span class="sb-icon">📦</span> Inventory</a>
+      <a class="sb-link" href="../add_product/add_product.html"><span class="sb-icon">➕</span> Add Product</a>
+      <a class="sb-link" href="../alerts/alerts.html"><span class="sb-icon">🔔</span> Alerts <span class="sb-badge"
+          id="alertBadge">3</span></a>
+      <a class="sb-link" href="../reports/reports.html"><span class="sb-icon">📈</span> Reports</a>
+      <a class="sb-link" href="../profile/profile.html"><span class="sb-icon">👤</span> Profile</a>
+    </nav>
+    <div class="sb-divider"></div>
+    <div class="sb-footer">
+      <button class="sb-logout" onclick="handleLogout()">🚪 Logout</button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <button class="hamburger" onclick="toggleSidebar()">☰</button>
+        <div class="topbar-left">
+          <h1>Dashboard</h1>
+          <p id="greeting">Good morning — Wednesday, 13 May 2026</p>
+        </div>
+      </div>
+      <a href="../add_product/add_product.html"><button class="btn-add">➕ Add Product</button></a>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="content">
+
+      <!-- KPI CARDS -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <div class="kpi-icon blue">📦</div>
+          </div>
+          <div class="kpi-val blue" id="totalCount">24</div>
+          <div class="kpi-label">Total Products</div>
+          <div class="kpi-note">All tracked items</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <div class="kpi-icon orange">⚠️</div>
+          </div>
+          <div class="kpi-val orange" id="expiringCount">--</div>
+          <div class="kpi-label">Expiring Soon</div>
+          <div class="kpi-note">Within 7 days</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <div class="kpi-icon red">🚨</div>
+          </div>
+          <div class="kpi-val red" id="expiredCount">--</div>
+          <div class="kpi-label">Expired</div>
+          <div class="kpi-note">Action required</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <div class="kpi-icon green">✅</div>
+          </div>
+          <div class="kpi-val green" id="safeCount">--</div>
+          <div class="kpi-label">Safe</div>
+          <div class="kpi-note">All good</div>
+        </div>
+      </div>
+
+      <!-- TWO COLUMN -->
+      <div class="two-col">
+
+        <!-- RECENT ALERTS -->
+        <div class="panel">
+          <div class="panel-title">
+            Recent Alerts — Requires Attention
+            <a href="../alerts/alerts.html" class="panel-link">View All →</a>
+          </div>
+          <div id="recentAlertsTable">
+            <div class="alert-row" style="justify-content:center; color: var(--text-secondary); padding: 20px;">
+              Loading alerts...
+            </div>
+          </div>
+        </div>
+
+        <!-- STOCK OVERVIEW -->
+        <div class="panel">
+          <div class="panel-title">Stock Overview</div>
+
+          <div class="chart-row">
+            <div class="chart-label">
+              <span class="chart-label-name">✅ Safe</span>
+              <span class="chart-label-val" id="safeBarText">-- (0%)</span>
+            </div>
+            <div class="chart-bar-bg">
+              <div class="chart-bar green" id="safeBar" style="width:0%"></div>
+            </div>
+          </div>
+          <div class="chart-row">
+            <div class="chart-label">
+              <span class="chart-label-name">⚠️ Expiring</span>
+              <span class="chart-label-val" id="expBarText">-- (0%)</span>
+            </div>
+            <div class="chart-bar-bg">
+              <div class="chart-bar orange" id="expiringBar" style="width:0%"></div>
+            </div>
+          </div>
+          <div class="chart-row">
+            <div class="chart-label">
+              <span class="chart-label-name">🚨 Expired</span>
+              <span class="chart-label-val" id="expiredBarText">-- (0%)</span>
+            </div>
+            <div class="chart-bar-bg">
+              <div class="chart-bar red" id="expiredBar" style="width:0%"></div>
+            </div>
+          </div>
+
+          <div class="cat-pills">
+            <div class="cat-pill">🍎 Food <span>12</span></div>
+            <div class="cat-pill">💊 Medicine <span>7</span></div>
+            <div class="cat-pill">🏠 Household <span>3</span></div>
+            <div class="cat-pill">📦 Other <span>2</span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { supabase } from '../../shared/js/supabase.js';
+
+    // 1. ROUTE GUARD & SESSION
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      window.location.href = '../auth/login.html';
+    } else {
+      // 2. GET USER & SET GREETING
+      const user = session.user;
+      let fullName = user.user_metadata?.full_name;
+      if (!fullName) {
+        const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user.id).single();
+        fullName = profile?.full_name;
+      }
+      
+      const greetEl = document.getElementById('greeting');
+      const now = new Date();
+      const h = now.getHours();
+      const greeting = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+      const dateStr = now.toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+      const nameStr = fullName ? `, ${fullName.split(' ')[0]}` : '';
+      greetEl.textContent = `${greeting}${nameStr} — ${dateStr}`;
+
+      // 3. FETCH PRODUCTS
+      const { data: products } = await supabase
+        .from('products')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('expiry_date', { ascending: true });
+
+      let safeCount = 0, expCount = 0, expiredCount = 0;
+      const nowMs = new Date().getTime();
+
+      // Clear recent alerts table
+      const alertsTable = document.getElementById('recentAlertsTable');
+      if (alertsTable) alertsTable.innerHTML = '';
+      let alertCount = 0;
+      const catMap = {};
+
+      if (products) {
+        products.forEach(p => {
+          // Category count
+          catMap[p.category] = (catMap[p.category] || 0) + 1;
+
+          // Expiry calculation
+          const expDate = new Date(p.expiry_date).getTime();
+          const daysLeft = Math.ceil((expDate - nowMs) / 86400000);
+          
+          let statusStr = 'safe';
+          if (daysLeft < 0) { statusStr = 'expired'; expiredCount++; }
+          else if (daysLeft <= 7) { statusStr = 'expiring'; expCount++; }
+          else { safeCount++; }
+
+          // Render top 5 alerts (expired or expiring)
+          if (alertsTable && (statusStr === 'expired' || statusStr === 'expiring') && alertCount < 5) {
+            alertCount++;
+            const isExpired = statusStr === 'expired';
+            const dotColor = isExpired ? 'red' : 'orange';
+            const badgeClass = isExpired ? 'expired' : 'soon';
+            const badgeText = isExpired ? 'EXPIRED' : 'EXP. SOON';
+            const daysClass = isExpired ? 'neg' : '';
+            const absDays = Math.abs(daysLeft);
+            const daysText = isExpired ? `-${absDays}d` : `${daysLeft}d`;
+            
+            alertsTable.innerHTML += `
+              <div class="alert-row">
+                <div class="alert-dot ${dotColor}"></div>
+                <div class="alert-name">${p.name}</div>
+                <span class="badge ${badgeClass}">${badgeText}</span>
+                <div class="days-left ${daysClass}">${daysText}</div>
+                <a href="../product_detail/product_detail.html?id=${p.id}"><button class="btn-view">View</button></a>
+              </div>
+            `;
+          }
+        });
+      }
+
+      if (alertsTable && alertCount === 0) {
+        alertsTable.innerHTML = `<div style="text-align:center; padding: 24px; color: var(--text-muted); font-size:13px;">No recent alerts. Everything looks safe!</div>`;
+      }
+
+      // Update alert badge in sidebar
+      const alertBadge = document.getElementById('alertBadge');
+      if (alertBadge) {
+        const totalAlerts = expiredCount + expCount;
+        if (totalAlerts > 0) {
+          alertBadge.textContent = totalAlerts;
+          alertBadge.style.display = 'inline-flex';
+        } else {
+          alertBadge.style.display = 'none';
+        }
+      }
+
+      // 4. UPDATE STATS CARDS
+      const totalCount = (products || []).length;
+      if (document.getElementById('totalCount')) document.getElementById('totalCount').textContent = totalCount;
+      if (document.getElementById('safeCount')) document.getElementById('safeCount').textContent = safeCount;
+      if (document.getElementById('expiringCount')) document.getElementById('expiringCount').textContent = expCount;
+      if (document.getElementById('expiredCount')) document.getElementById('expiredCount').textContent = expiredCount;
+
+      // 5. UPDATE STOCK OVERVIEW BARS
+      if (totalCount > 0) {
+        const safePct = Math.round((safeCount / totalCount) * 100);
+        const expPct = Math.round((expCount / totalCount) * 100);
+        const expiredPct = Math.round((expiredCount / totalCount) * 100);
+
+        if (document.querySelector('#safeBar')) {
+          document.querySelector('#safeBar').parentElement.previousElementSibling.innerHTML = `
+            <span class="chart-label-name">✅ Safe</span>
+            <span class="chart-label-val">${safeCount} (${safePct}%)</span>
+          `;
+          document.querySelector('#expiringBar').parentElement.previousElementSibling.innerHTML = `
+            <span class="chart-label-name">⚠️ Expiring</span>
+            <span class="chart-label-val">${expCount} (${expPct}%)</span>
+          `;
+          document.querySelector('#expiredBar').parentElement.previousElementSibling.innerHTML = `
+            <span class="chart-label-name">🚨 Expired</span>
+            <span class="chart-label-val">${expiredCount} (${expiredPct}%)</span>
+          `;
+
+          setTimeout(() => {
+            document.getElementById('safeBar').style.width = safePct + '%';
+            document.getElementById('expiringBar').style.width = expPct + '%';
+            document.getElementById('expiredBar').style.width = expiredPct + '%';
+          }, 300);
+        }
+      }
+
+      // 6. UPDATE CATEGORY PILLS
+      const catIcons = {
+        'Food': '🍎',
+        'Medicine': '💊',
+        'Household': '🏠',
+        'Cosmetics': '💄',
+        'Other': '📦'
+      };
+
+      const pillsHtml = Object.entries(catMap)
+        .sort((a,b) => b[1] - a[1]) // highest count first
+        .map(([cat, count]) => `<div class="cat-pill">${catIcons[cat] || '📦'} ${cat} <span>${count}</span></div>`)
+        .join('');
+      
+      const pillsContainer = document.querySelector('.cat-pills');
+      if (pillsContainer) {
+        pillsContainer.innerHTML = pillsHtml || '<div class="cat-pill">No categories</div>';
+      }
+    }
+
+    // Sidebar toggle
+    window.toggleSidebar = function() {
+      document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('overlay').classList.toggle('open');
+    }
+
+    // Logout
+    window.handleLogout = async function() {
+      await supabase.auth.signOut();
+      window.location.href = '../auth/login.html';
+    }
+  </script>
+</body>
+
+</html>

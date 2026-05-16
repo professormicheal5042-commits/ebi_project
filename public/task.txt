@@ -1,0 +1,43 @@
+UI Screen Flow (public\ui_screen_flow.txt content)
+User Flow (Mobile-first Responsive Web App)
+
+Splash / Landing Page
+App logo + tagline ("Never Waste Again")
+Login / Register buttons
+Demo mode option
+
+Dashboard (Home)
+Welcome + quick stats: "5 items expiring soon", "Total items: 32"
+Expiring soon list (color-coded: Red <7 days, Orange 7-30 days, Green >30 days)
+Quick actions: + Add Product, Scan Product, View All
+
+Add Product Screen
+Two tabs: Manual Entry | Scan Photo
+Manual: Product name, Category (Food, Medicine, etc.), Expiry Date (date picker), Quantity, Notes
+Scan: Upload photo → (simulate OCR or simple display) → auto-fill expiry if possible
+Save to Supabase
+
+Inventory List / Products Page
+Search bar + filters (All, Expiring Soon, Category, Expired)
+Cards or table: Product name, expiry date, days left, status badge
+Sort by expiry date
+
+Product Detail Screen
+Full info + edit/delete
+Log consumption/use (reduce quantity)
+Usage history (simple log)
+
+Alerts / Notifications Page
+List of upcoming alerts
+Settings: Notification preferences (in-app, email if set)
+
+Analytics / Insights Page (Simple)
+Waste report (expired items)
+Most used products
+Basic chart (e.g., items by category) using Chart.js
+
+Profile / Settings
+User info
+Categories management
+Export data
+Logout

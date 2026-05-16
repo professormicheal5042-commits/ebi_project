@@ -1,0 +1,474 @@
+=========================================================================
+  UI SCREEN FLOW — AI-POWERED PRODUCT EXPIRY ALERT MANAGEMENT SYSTEM
+=========================================================================
+Student     : JEPHTHAH EBIAYIFHAGA (MAT. NO. FOC/23/009541)
+Institution : Southern Delta University, Ozoro
+Total Screens: 9  (within 10-screen limit)
+Navigation  : LEFT SIDEBAR on all authenticated screens (Screens 3–9)
+=========================================================================
+
+=========================================================================
+  MODULAR FOLDER STRUCTURE
+=========================================================================
+  /ebi_project
+    /modules
+      /auth         → login.html, register.html, auth.js
+      /dashboard    → dashboard.html, dashboard.js
+      /inventory    → inventory.html, inventory.js
+      /products     → add-product.html, product-detail.html, products.js
+      /alerts       → alerts.html, alerts.js
+      /reports      → reports.html, reports.js
+      /profile      → profile.html, profile.js
+    /css            → style.css, sidebar.css
+    /js             → supabase.js  (shared Supabase client)
+
+=========================================================================
+  SIDEBAR NAVIGATION (Fixed, Left Side — All Authenticated Screens)
+=========================================================================
+  Width : 220px, fixed position, full viewport height
+  Theme : Dark background (#1e293b), accent indigo (#6366f1)
+
+  ┌─────────────────────┐
+  │  [Icon] ExpiryAI    │  ← Logo + App Name
+  │  ───────────────    │
+  │  [#] Dashboard      │  ← Active link: indigo left border + bg
+  │  [≡] Inventory      │
+  │  [+] Add Product    │
+  │  [!] Alerts   [3]   │  ← Red badge shows unread alert count
+  │  [▤] Reports        │
+  │  [☰] Profile        │
+  │  ───────────────    │
+  │  [→] Logout         │  ← Always at bottom
+  └─────────────────────┘
+
+  Active page → highlighted with indigo left border + lighter bg
+  Mobile     → sidebar hidden; hamburger button (☰) top-left toggles it
+  Main content shifts right by 220px on desktop
+
+=========================================================================
+  SCREEN FLOW DIAGRAM
+=========================================================================
+
+  [Screen 1: Login] ←→ [Screen 2: Register]
+          │
+          ▼ (on success)
+  [Screen 3: Dashboard]  ←── (sidebar: Dashboard link)
+          │
+          ├─── sidebar ──→ [Screen 4: Inventory]
+          │                        │
+          │                        ├── [View]   → [Screen 6: Product Detail]
+          │                        └── [Edit]   → [Screen 5: Add Product]
+          │
+          ├─── sidebar ──→ [Screen 5: Add/Edit Product]
+          │
+          ├─── sidebar ──→ [Screen 7: Alerts]
+          │                        │
+          │                        └── [View]   → [Screen 6: Product Detail]
+          │
+          ├─── sidebar ──→ [Screen 8: Reports]
+          │
+          └─── sidebar ──→ [Screen 9: Profile]
+                                   │
+                                   └── [Logout] → [Screen 1: Login]
+
+=========================================================================
+
+
+=========================================================================
+  SCREEN 1: LOGIN
+  Module: /modules/auth/login.html
+=========================================================================
+PURPOSE : Entry point. Authenticates returning users.
+SIDEBAR : No (pre-authentication screen)
+
+LAYOUT:
+  ┌──────────────────────────────────────┐
+  │                                      │
+  │         [App Icon]                   │
+  │         ExpiryAI                     │
+  │   Smart Product Expiry Management    │
+  │                                      │
+  │   Email      [______________________]│
+  │   Password   [______________________]│
+  │                                      │
+  │         [ Login ]                    │
+  │                                      │
+  │   Forgot Password?                   │
+  │   Don't have an account? Register    │
+  └──────────────────────────────────────┘
+
+WHAT IS ON THIS SCREEN:
+  - App icon + "ExpiryAI" brand name (centered)
+  - Tagline: "Smart Product Expiry Management"
+  - Email input field (id="loginEmail")
+  - Password input field with show/hide toggle (id="loginPassword")
+  - [Login] primary full-width button (id="loginBtn")
+  - "Forgot Password?" link
+  - "Register" link → Screen 2
+  - Error message div (id="loginError") — hidden until login fails
+
+FLOW: Login success → Screen 3 (Dashboard)
+
+
+=========================================================================
+  SCREEN 2: REGISTER
+  Module: /modules/auth/register.html
+=========================================================================
+PURPOSE : Creates a new user account.
+SIDEBAR : No (pre-authentication screen)
+
+LAYOUT:
+  ┌──────────────────────────────────────┐
+  │         [App Icon]                   │
+  │      Create Your Account             │
+  │                                      │
+  │   Full Name  [______________________]│
+  │   Email      [______________________]│
+  │   Password   [______________________]│
+  │   Confirm    [______________________]│
+  │                                      │
+  │      [ Create Account ]              │
+  │                                      │
+  │   Already have an account? Login     │
+  └──────────────────────────────────────┘
+
+WHAT IS ON THIS SCREEN:
+  - App icon + "Create Your Account" heading
+  - Full Name, Email, Password, Confirm Password inputs
+  - [Create Account] primary button (id="regBtn")
+  - Inline validation: passwords must match
+  - Error message div (id="regError")
+  - "Login" link → Screen 1
+
+FLOW: Register success → Screen 3 (Dashboard)
+
+
+=========================================================================
+  SCREEN 3: DASHBOARD  *** CENTRAL HUB ***
+  Module: /modules/dashboard/dashboard.html
+=========================================================================
+PURPOSE : Main hub. Live summary of all product expiry status.
+SIDEBAR : YES — "Dashboard" link is active
+
+LAYOUT:
+  ┌──────────────┬────────────────────────────────────────────────────┐
+  │   SIDEBAR    │  TOP BAR: "Dashboard"          [+ Add Product]     │
+  │              ├────────────────────────────────────────────────────┤
+  │  [Logo]      │  Good Morning, [Name]!   —  Wednesday, 13 May 2026 │
+  │  ExpiryAI    ├──────────┬───────────┬────────────┬───────────────┤
+  │  ──────────  │  TOTAL   │ EXPIRING  │  EXPIRED   │     SAFE      │
+  │  Dashboard ◀ │   24     │    5      │     3      │      16       │
+  │  Inventory   │  Products│ <7 days   │ Act. Req.  │   All Good    │
+  │  Add Product ├──────────┴───────────┴────────────┴───────────────┤
+  │  Alerts [3]  │                                                    │
+  │  Reports     │  RECENT ALERTS                   STOCK OVERVIEW   │
+  │  Profile     │  ─────────────────────           ───────────────  │
+  │  ──────────  │  Milk 2L    EXPIRED   -2d [View] Safe     ████ 67%│
+  │  Logout      │  Paracetamol EXPIRED  -1d [View] Expiring ██  21% │
+  │              │  Yogurt   EXP.SOON  2d  [View]  Expired  █   12% │
+  │              │  Bread    EXP.SOON  3d  [View]            ────── │
+  │              │  Cheese   EXP.SOON  5d  [View]  Food | Med | Other│
+  │              │                    View All Alerts →               │
+  └──────────────┴────────────────────────────────────────────────────┘
+
+WHAT IS ON THIS SCREEN (DETAILED):
+  SIDEBAR: Active = "Dashboard" (indigo border + bg highlight)
+
+  TOP BAR:
+    - Page title "Dashboard" (h1)
+    - Greeting with live user name (id="greeting")
+    - Today's date displayed
+    - "+ Add Product" button → Screen 5
+
+  4 SUMMARY CARDS (CSS Grid, 4 equal columns):
+    Card 1: Total Products — blue — id="totalCount"
+    Card 2: Expiring Soon  — orange — id="expiringCount" — note "< 7 days"
+    Card 3: Expired        — red  — id="expiredCount" — note "Action Required"
+    Card 4: Safe           — green — id="safeCount"  — note "All Good"
+    (All counts populated from live Supabase data on page load)
+
+  TWO-COLUMN ROW:
+    LEFT — Recent Alerts Table (id="recentAlertsTable"):
+      Heading: "Recent Alerts — Requires Attention"
+      Top 5 most urgent products (sorted by days left ascending)
+      Columns: Product | Status Badge | Days Left | [View] button
+      [View] → Screen 6 (Product Detail)
+      "View All Alerts →" link → Screen 7 (Alerts)
+
+    RIGHT — Stock Overview Mini Chart:
+      3 horizontal CSS bars (no JS library needed):
+        Safe bar       (green,  id="safeBar",     width = safe%)
+        Expiring bar   (orange, id="expiringBar",  width = expiring%)
+        Expired bar    (red,    id="expiredBar",   width = expired%)
+      Category pills below: Food | Medicine | Household | Other + counts
+
+FLOW:
+  "+ Add Product" button → Screen 5
+  [View] in recent alerts → Screen 6
+  "View All Alerts" link → Screen 7
+
+
+=========================================================================
+  SCREEN 4: INVENTORY (Product List)
+  Module: /modules/inventory/inventory.html
+=========================================================================
+PURPOSE : Full list of all user products with search and filter.
+SIDEBAR : YES — "Inventory" link is active
+
+LAYOUT:
+  ┌──────────────┬──────────────────────────────────────────────────────┐
+  │   SIDEBAR    │  My Inventory                   [+ Add Product]      │
+  │  Inventory ◀ │  [Search products...]  [Category: All      ▼]        │
+  │              ├────┬─────────────┬──────────┬────┬────────────┬──────┤
+  │              │ #  │ Product     │ Category │ Qty│ Expiry     │ Left │
+  │              ├────┼─────────────┼──────────┼────┼────────────┼──────┤
+  │              │ 1  │ Milk 2L     │ Food     │ 2  │ 2026-05-11 │ -2d  │
+  │              │ 2  │ Paracetamol │ Medicine │ 10 │ 2026-05-12 │ -1d  │
+  │              │ 3  │ Yogurt      │ Food     │ 1  │ 2026-05-15 │  2d  │
+  │              │ 4  │ Bread Loaf  │ Food     │ 1  │ 2026-05-16 │  3d  │
+  │              │ 5  │ Rice 5kg    │ Food     │ 5  │ 2026-08-01 │ 80d  │
+  │              │    │             │          │    │ [Badges]   │[Acts]│
+  └──────────────┴────┴─────────────┴──────────┴────┴────────────┴──────┘
+  Status badges: [EXPIRED](red) [EXP.SOON](orange) [SAFE](green)
+  Actions per row: [View] [Edit] [Delete]
+
+WHAT IS ON THIS SCREEN:
+  - "My Inventory" page title
+  - "+ Add Product" button top-right → Screen 5
+  - Search bar (id="searchInput") — filters rows by name on keyup
+  - Category dropdown (id="categoryFilter") — All / Food / Medicine / etc.
+  - Data table (id="inventoryTable"):
+      # | Product Name | Category | Qty | Expiry Date | Days Left
+      | Status (badge) | Actions [View] [Edit] [Delete]
+  - Empty state (id="emptyState"): "No products yet. Add your first!"
+
+FLOW:
+  "+ Add Product" → Screen 5 (blank form)
+  [View]           → Screen 6 (product-detail.html?id=xxx)
+  [Edit]           → Screen 5 (pre-filled form, ?id=xxx)
+  [Delete]         → confirm dialog → remove row
+
+
+=========================================================================
+  SCREEN 5: ADD / EDIT PRODUCT
+  Module: /modules/products/add-product.html
+=========================================================================
+PURPOSE : Form to add a new product or edit an existing one.
+SIDEBAR : YES — "Add Product" link is active
+
+LAYOUT:
+  ┌──────────────┬────────────────────────────────────────────┐
+  │   SIDEBAR    │  Add New Product                           │
+  │  Add Prod. ◀ │                                            │
+  │              │  Product Name   [____________________]     │
+  │              │  Category       [Food              ▼]     │
+  │              │  Quantity [__]  Unit [pcs          ▼]     │
+  │              │  Mfg Date       [date picker       ]      │
+  │              │  Expiry Date *  [date picker       ]      │
+  │              │  Notes          [____________________]     │
+  │              │                 [textarea          ]      │
+  │              │                                            │
+  │              │    [Save Product]      [Cancel]            │
+  └──────────────┴────────────────────────────────────────────┘
+
+WHAT IS ON THIS SCREEN:
+  - Title: "Add New Product" (or "Edit Product" when ?id= in URL)
+  - Product Name (text, required, id="prodName")
+  - Category select: Food / Medicine / Household / Cosmetics / Other
+  - Quantity (number, id="prodQty") + Unit select: pcs/kg/L/mg/boxes
+  - Manufacturing Date (date picker, optional, id="prodMfgDate")
+  - Expiry Date (date picker, required*, id="prodExpiryDate")
+  - Notes (textarea, optional, id="prodNotes")
+  - [Save Product] primary button (id="saveBtn")
+  - [Cancel] outline button (id="cancelBtn") → back to Screen 4
+  - Validation: Expiry Date required; Expiry Date must be after Mfg Date
+
+FLOW:
+  [Save Product] → insert/update Supabase → Screen 4 (Inventory)
+  [Cancel]       → Screen 4 (Inventory) without saving
+
+
+=========================================================================
+  SCREEN 6: PRODUCT DETAIL
+  Module: /modules/products/product-detail.html
+=========================================================================
+PURPOSE : Full read-only view of one product and its expiry status.
+SIDEBAR : YES — "Inventory" link stays active
+
+LAYOUT:
+  ┌──────────────┬──────────────────────────────────────────────┐
+  │   SIDEBAR    │  ← Back to Inventory                         │
+  │  Inventory ◀ ├──────────────────────────────────────────────┤
+  │              │  ██████████  EXPIRED  ███████████████████    │
+  │              │  (full-width red/orange/green status banner)  │
+  │              ├──────────────────────────────────────────────┤
+  │              │  Milk 2L                          (h1 name)  │
+  │              │  ──────────────────────────────────────────  │
+  │              │  Category    : Food                          │
+  │              │  Quantity    : 2 pcs                         │
+  │              │  Mfg Date    : 10 April 2026                 │
+  │              │  Expiry Date : 11 May 2026                   │
+  │              │  Days Left   : [ -2 days ] (large, red)      │
+  │              │  Notes       : Keep refrigerated             │
+  │              │  Date Added  : 01 May 2026                   │
+  │              │                                              │
+  │              │    [Edit Product]     [Delete Product]        │
+  └──────────────┴──────────────────────────────────────────────┘
+
+WHAT IS ON THIS SCREEN:
+  - "← Back to Inventory" link (top-left)
+  - Full-width colored status banner:
+      Red   = "EXPIRED"        (past expiry)
+      Orange = "EXPIRING SOON" (0–7 days left)
+      Green  = "SAFE"          (> 7 days left)
+  - Product details card:
+      Name (large h1), Category, Quantity + Unit, Mfg Date,
+      Expiry Date, Days Left (large bold colored number), Notes, Date Added
+  - [Edit Product] → Screen 5 pre-filled
+  - [Delete Product] → confirm prompt → delete → Screen 4
+
+FLOW:
+  [Edit Product]   → Screen 5 (?id=xxx, pre-filled)
+  [Delete Product] → confirm → Screen 4
+  Back link        → Screen 4
+
+
+=========================================================================
+  SCREEN 7: ALERTS & NOTIFICATIONS
+  Module: /modules/alerts/alerts.html
+=========================================================================
+PURPOSE : Central list of all active product expiry alerts.
+SIDEBAR : YES — "Alerts" link is active (red badge with count)
+
+LAYOUT:
+  ┌──────────────┬─────────────────────────────────────────────────┐
+  │   SIDEBAR    │  Alerts & Notifications                          │
+  │  Alerts [3]◀ │  [All]  [Expired]  [Expiring Soon]   (toggle)   │
+  │              │  ─────────────────────────────────────────────  │
+  │              │  [!] Milk 2L        EXPIRED       2 days ago    │
+  │              │                                  [Mark as Read] │
+  │              │  [!] Paracetamol    EXPIRED       1 day ago     │
+  │              │                                  [Mark as Read] │
+  │              │  [!] Yogurt         EXPIRING SOON 2 days left   │
+  │              │                                  [Mark as Read] │
+  │              │  [✓] Cheese         EXPIRING SOON 5 days left   │
+  │              │                                  (read — faded) │
+  │              │  ─────────────────────────────────────────────  │
+  │              │  No more alerts.                                │
+  └──────────────┴─────────────────────────────────────────────────┘
+
+WHAT IS ON THIS SCREEN:
+  - "Alerts & Notifications" title
+  - Filter toggle row: [All] [Expired] [Expiring Soon]
+  - Alert cards list (id="alertsList"), sorted by urgency:
+      Icon (colored by severity) + Product name + Status badge + Days info
+      [Mark as Read] button per unread alert
+      Read alerts shown greyed/faded with ✓ icon
+  - Alert card click → Screen 6 (Product Detail)
+  - Empty state: "No active alerts — all products are safe!"
+
+FLOW:
+  Alert card click   → Screen 6 (product-detail.html?id=xxx)
+  [Mark as Read]     → updates Supabase is_read → card fades
+
+
+=========================================================================
+  SCREEN 8: REPORTS & ANALYTICS
+  Module: /modules/reports/reports.html
+=========================================================================
+PURPOSE : Read-only analytics of product inventory by status/category.
+SIDEBAR : YES — "Reports" link is active
+
+LAYOUT:
+  ┌──────────────┬──────────────────────────────────────────────┐
+  │   SIDEBAR    │  Reports & Analytics                          │
+  │  Reports   ◀ │                                              │
+  │              │  OVERALL STATUS                              │
+  │              │  Safe      ████████████████ 16 (67%)         │
+  │              │  Expiring  █████ 5 (21%)                     │
+  │              │  Expired   ██ 3 (12%)                       │
+  │              │                                              │
+  │              │  BREAKDOWN BY CATEGORY                       │
+  │              │  ┌────────────┬─────┬────┬──────┬────────┐  │
+  │              │  │ Category   │Total│Safe│Expir.│Expired │  │
+  │              │  ├────────────┼─────┼────┼──────┼────────┤  │
+  │              │  │ Food       │  12 │  6 │   4  │    2   │  │
+  │              │  │ Medicine   │   7 │  6 │   1  │    1   │  │
+  │              │  │ Household  │   3 │  3 │   0  │    0   │  │
+  │              │  │ Other      │   2 │  2 │   0  │    0   │  │
+  │              │  └────────────┴─────┴────┴──────┴────────┘  │
+  │              │                         [Export CSV]         │
+  └──────────────┴──────────────────────────────────────────────┘
+
+WHAT IS ON THIS SCREEN:
+  - "Reports & Analytics" title
+  - Overall status CSS horizontal bar chart (3 bars: Safe/Expiring/Expired)
+    Each bar shows: label, colored fill width, count, and percentage
+  - Category breakdown table (live data):
+    Category | Total | Safe | Expiring Soon | Expired
+  - [Export CSV] button: downloads product list as .csv file
+  - All data is read-only, fetched from Supabase on load
+
+FLOW: Read-only screen, no navigation changes.
+
+
+=========================================================================
+  SCREEN 9: PROFILE & SETTINGS
+  Module: /modules/profile/profile.html
+=========================================================================
+PURPOSE : User account info and password management.
+SIDEBAR : YES — "Profile" link is active
+
+LAYOUT:
+  ┌──────────────┬──────────────────────────────────────────────┐
+  │   SIDEBAR    │  My Profile                                  │
+  │  Profile   ◀ │                                              │
+  │              │  [ JE ]  ← Initials avatar circle (indigo)  │
+  │              │                                              │
+  │              │  ACCOUNT INFORMATION                         │
+  │              │  Name   : Jephthah Ebiayifhaga               │
+  │              │  Email  : jephthah@example.com               │
+  │              │  Role   : User                               │
+  │              │  Joined : May 2026                           │
+  │              │                                              │
+  │              │  ── CHANGE PASSWORD ──────────────────────   │
+  │              │  New Password      [____________________]    │
+  │              │  Confirm Password  [____________________]    │
+  │              │              [Update Password]               │
+  │              │  ✓ Password updated successfully!            │
+  │              │                                              │
+  │              │       [ Logout Account ]  (red button)       │
+  └──────────────┴──────────────────────────────────────────────┘
+
+WHAT IS ON THIS SCREEN:
+  - "My Profile" title
+  - User avatar: colored circle with user initials (e.g. "JE")
+  - Account info (read-only): Name, Email, Role, Join Date
+  - Change Password section:
+      New Password + Confirm Password inputs
+      [Update Password] button → calls supabase.auth.updateUser
+      Success / error message below button
+  - [Logout Account] red/danger button → signOut() → Screen 1
+
+FLOW:
+  [Update Password] → stays on Screen 9, shows success message
+  [Logout Account]  → clears session → Screen 1 (Login)
+
+
+=========================================================================
+  SUMMARY TABLE — ALL 9 SCREENS
+=========================================================================
+  #  │ Module       │ Screen Name      │ File               │ Sidebar
+  ───┼──────────────┼──────────────────┼────────────────────┼────────
+  1  │ auth         │ Login            │ login.html         │ No
+  2  │ auth         │ Register         │ register.html      │ No
+  3  │ dashboard    │ Dashboard        │ dashboard.html     │ Yes ◀
+  4  │ inventory    │ Inventory        │ inventory.html     │ Yes
+  5  │ products     │ Add/Edit Product │ add-product.html   │ Yes
+  6  │ products     │ Product Detail   │ product-detail.html│ Yes
+  7  │ alerts       │ Alerts           │ alerts.html        │ Yes
+  8  │ reports      │ Reports          │ reports.html       │ Yes
+  9  │ profile      │ Profile          │ profile.html       │ Yes
+=========================================================================
+  END OF UI SCREEN FLOW
+=========================================================================

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Profile — EBI Expiry Alert System</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="./profile.css"/>
+</head>
+<body>
+<div class="sidebar-overlay" id="overlay" onclick="toggleSidebar()"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sb-logo"><div class="sb-logo-icon">🌿</div><div><div class="sb-logo-text">EBI System</div><div class="sb-logo-sub">AI Expiry Guard</div></div></div>
+  <nav class="sb-nav">
+    <a class="sb-link" href="../dashboard/dashboard.html"><span class="sb-icon">📊</span> Dashboard</a>
+    <a class="sb-link" href="../inventory/inventory.html"><span class="sb-icon">📦</span> Inventory</a>
+    <a class="sb-link" href="../add_product/add_product.html"><span class="sb-icon">➕</span> Add Product</a>
+    <a class="sb-link" href="../alerts/alerts.html"><span class="sb-icon">🔔</span> Alerts <span class="sb-badge">3</span></a>
+    <a class="sb-link" href="../reports/reports.html"><span class="sb-icon">📈</span> Reports</a>
+    <a class="sb-link active" href="profile.html"><span class="sb-icon">👤</span> Profile</a>
+  </nav>
+  <div class="sb-divider"></div>
+  <div class="sb-footer"><button class="sb-logout" onclick="handleLogout()">🚪 Logout</button></div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <button class="hamburger" onclick="toggleSidebar()">☰</button>
+    <h1>My Profile</h1>
+  </div>
+  <div class="content">
+    <div class="profile-wrap">
+
+      <!-- AVATAR CARD -->
+      <div class="avatar-card">
+        <div class="avatar" id="avatarCircle">JE</div>
+        <div class="avatar-info">
+          <h2 id="displayName">Jephthah Ebiayifhaga</h2>
+          <p id="displayEmail">jephthah@example.com</p>
+          <div class="role-badge">🛡️ User</div>
+        </div>
+      </div>
+
+      <!-- ACCOUNT INFO -->
+      <div class="info-card">
+        <h3>Account Information</h3>
+        <div class="info-row"><span class="info-label">Full Name</span><span class="info-val" id="infoName">Jephthah Ebiayifhaga</span></div>
+        <div class="info-row"><span class="info-label">Email</span><span class="info-val" id="infoEmail">jephthah@example.com</span></div>
+        <div class="info-row"><span class="info-label">Role</span><span class="info-val">User</span></div>
+        <div class="info-row"><span class="info-label">Member Since</span><span class="info-val">May 2026</span></div>
+      </div>
+
+      <!-- CHANGE PASSWORD -->
+      <div class="pw-card">
+        <h3>Change Password</h3>
+        <div class="error-box" id="pwError"></div>
+        <div class="success-box" id="pwSuccess"></div>
+        <div class="field">
+          <label for="newPw">New Password</label>
+          <div class="input-wrap">
+            <input type="password" id="newPw" placeholder="Min. 8 characters"/>
+            <button type="button" class="toggle-pw" onclick="togglePw('newPw',this)">👁️</button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="confirmPw">Confirm Password</label>
+          <div class="input-wrap">
+            <input type="password" id="confirmPw" placeholder="Repeat new password"/>
+            <button type="button" class="toggle-pw" onclick="togglePw('confirmPw',this)">👁️</button>
+          </div>
+        </div>
+        <button class="btn-update" id="updateBtn" onclick="updatePassword()">
+          <span id="updateText">🔐 Update Password</span>
+          <span id="updateLoading" style="display:none"><span class="spinner"></span>Updating...</span>
+        </button>
+      </div>
+
+      <!-- LOGOUT -->
+      <button class="btn-logout-full" onclick="handleLogout()">🚪 Logout Account</button>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  function togglePw(id, btn) {
+    const inp = document.getElementById(id);
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+    btn.textContent = inp.type === 'password' ? '👁️' : '🙈';
+  }
+
+  async function updatePassword() {
+    const pw = document.getElementById('newPw').value;
+    const cpw = document.getElementById('confirmPw').value;
+    const errEl = document.getElementById('pwError');
+    const sucEl = document.getElementById('pwSuccess');
+    const btn = document.getElementById('updateBtn');
+    const uText = document.getElementById('updateText');
+    const uLoad = document.getElementById('updateLoading');
+    errEl.classList.remove('show'); sucEl.classList.remove('show');
+
+    if (!pw || pw.length < 8) { errEl.textContent = '⚠️ Password must be at least 8 characters.'; errEl.classList.add('show'); return; }
+    if (pw !== cpw) { errEl.textContent = '⚠️ Passwords do not match.'; errEl.classList.add('show'); return; }
+
+    btn.disabled = true; uText.style.display = 'none'; uLoad.style.display = 'inline';
+    // TODO Day 3: await supabase.auth.updateUser({ password: pw });
+    await new Promise(r => setTimeout(r, 1200));
+    btn.disabled = false; uText.style.display = 'inline'; uLoad.style.display = 'none';
+    document.getElementById('newPw').value = '';
+    document.getElementById('confirmPw').value = '';
+    sucEl.textContent = '✅ Password updated successfully!';
+    sucEl.classList.add('show');
+    setTimeout(() => sucEl.classList.remove('show'), 4000);
+  }
+
+  function handleLogout() {
+    if (confirm('Are you sure you want to logout?')) {
+      // TODO Day 3: await supabase.auth.signOut();
+      window.location.href = '../../index.html';
+    }
+  }
+
+  function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('overlay').classList.toggle('open');
+  }
+</script>
+</body>
+</html>
