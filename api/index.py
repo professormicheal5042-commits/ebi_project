@@ -25,7 +25,7 @@ if DOTENV_PATH.exists():
             if key and key not in os.environ:
                 os.environ[key] = value
 
-app = FastAPI(title="EBI OCR API", version="1.1.0")
+app = FastAPI(title="EBI OCR API", version="1.1.1")
 
 app.add_middleware(
     CORSMiddleware,
@@ -34,7 +34,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-GEMINI_MODELS = ("gemini-2.0-flash", "gemini-1.5-flash")
+# Unversioned names (e.g. gemini-1.5-flash) return 404 on v1beta — use current stable IDs.
+_DEFAULT_GEMINI_MODELS = (
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
+    "gemini-flash-latest",
+)
+
+
+def _gemini_models() -> tuple[str, ...]:
+    override = os.environ.get("GEMINI_MODEL", "").strip()
+    if override:
+        return (override, *_DEFAULT_GEMINI_MODELS)
+    return _DEFAULT_GEMINI_MODELS
 
 OFF_CATEGORIES = {
     "en:beverages": "Food",
@@ -76,9 +88,9 @@ def _run_gemini(image_bytes: bytes, prompt: str) -> str:
         )
 
     genai.configure(api_key=api_key)
-    last_error = None
+    errors: list[str] = []
 
-    for model_name in GEMINI_MODELS:
+    for model_name in _gemini_models():
         try:
             model = genai.GenerativeModel(model_name)
             response = model.generate_content(
@@ -90,13 +102,14 @@ def _run_gemini(image_bytes: bytes, prompt: str) -> str:
             text = (response.text or "").strip()
             if text:
                 return text
+            errors.append(f"{model_name}: empty response")
         except Exception as exc:
-            last_error = exc
+            errors.append(f"{model_name}: {exc}")
             continue
 
     raise HTTPException(
         status_code=500,
-        detail=f"Gemini Vision error: {last_error}",
+        detail="Gemini Vision failed for all models. " + " | ".join(errors[-3:]),
     )
 
 

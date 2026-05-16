@@ -104,6 +104,25 @@
                 Stop Camera</button>
             </div>
           </div>
+
+          <div class="ocr-panel" id="panelBarcode">
+            <div class="ocr-icon">📊</div>
+            <div class="ocr-title">Scan Barcode or QR Code</div>
+            <div class="ocr-desc">Upload a photo of the code or use your camera to detect it.</div>
+            <input type="file" id="barcodeInput" class="ocr-input" accept="image/*" onchange="scanBarcodeFile(this.files)" />
+            <video id="barcodeCameraStream" autoplay playsinline></video>
+            <canvas id="barcodeCameraCanvas"></canvas>
+            <div class="camera-actions">
+              <button type="button" class="btn-ocr" onclick="document.getElementById('barcodeInput').click()">📂 Upload Code Image</button>
+              <button type="button" class="btn-ocr" id="btnStartBarcodeCam" onclick="startBarcodeCamera()">▶️ Start Camera</button>
+              <button type="button" class="btn-ocr" id="btnCaptureBarcode" onclick="captureAndScanBarcode()" style="display:none">
+                <span id="barcodeCaptureText">📸 Capture &amp; Scan Code</span>
+                <span id="barcodeCaptureLoading" style="display:none"><span class="spinner"></span> Scanning...</span>
+              </button>
+              <button type="button" class="btn-ocr-red" id="btnStopBarcodeCam" onclick="stopBarcodeCamera()" style="display:none">⏹ Stop</button>
+            </div>
+          </div>
+
         </div>
 
         <div class="ocr-divider">Or enter manually</div>
@@ -112,6 +131,11 @@
           <div class="field">
             <label for="prodName">Product Name <span class="req">*</span></label>
             <input type="text" id="prodName" placeholder="e.g. Milk 2L" required />
+          </div>
+
+          <div class="field">
+            <label for="prodBarcode">Barcode / QR Code</label>
+            <input type="text" id="prodBarcode" placeholder="Scanned code appears here" />
           </div>
 
           <div class="form-row">
@@ -191,6 +215,9 @@
           document.getElementById('prodName').value = data.name;
           document.getElementById('prodCategory').value = data.category || '';
           document.getElementById('prodQty').value = data.quantity || '';
+          document.getElementById('prodUnit').value = data.unit || 'pcs';
+          if (data.barcode) document.getElementById('prodBarcode').value = data.barcode;
+          if (data.notes) document.getElementById('prodNotes').value = data.notes;
           if (data.mfg_date) document.getElementById('prodMfgDate').value = data.mfg_date;
           if (data.expiry_date) document.getElementById('prodExpiryDate').value = data.expiry_date;
         }
@@ -199,11 +226,15 @@
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
   <script type="module">
-    import { OCR_API } from '../../shared/js/config.js';
+    import { OCR_API, BARCODE_SCAN_API, BARCODE_LOOKUP_API } from '../../shared/js/config.js';
     window.OCR_API_URL = OCR_API;
+    window.BARCODE_SCAN_API_URL = BARCODE_SCAN_API;
+    window.BARCODE_LOOKUP_API_URL = BARCODE_LOOKUP_API;
   </script>
   <script>
     const OCR_API = () => window.OCR_API_URL || 'https://ebi-project.vercel.app/api/extract-expiry';
+    const BARCODE_SCAN_API = () => window.BARCODE_SCAN_API_URL || 'https://ebi-project.vercel.app/api/scan-barcode';
+    const BARCODE_LOOKUP_API = () => window.BARCODE_LOOKUP_API_URL || 'https://ebi-project.vercel.app/api/lookup-barcode';
 
     // ── Form init ─────────────────────────────────────────────────────────
     const params = new URLSearchParams(window.location.search);
@@ -229,6 +260,9 @@
       const name = document.getElementById('prodName').value.trim();
       const cat = document.getElementById('prodCategory').value;
       const qty = document.getElementById('prodQty').value;
+      const unit = document.getElementById('prodUnit').value;
+      const notes = document.getElementById('prodNotes').value.trim();
+      const barcode = document.getElementById('prodBarcode').value.trim();
       const expiry = document.getElementById('prodExpiryDate').value;
       const mfg = document.getElementById('prodMfgDate').value;
 
@@ -246,9 +280,12 @@
           user_id: window.userId,
           name: name,
           category: cat,
-          quantity: qty ? parseInt(qty) : 1,
+          quantity: qty ? parseInt(qty, 10) : 1,
+          unit: unit || 'pcs',
           expiry_date: expiry,
-          mfg_date: mfg || null
+          mfg_date: mfg || null,
+          notes: notes || null,
+          barcode: barcode || null,
         };
 
         if (!window.supabaseClient) {
@@ -298,9 +335,12 @@
     function switchOcrTab(tab) {
       document.getElementById('tabUpload').classList.toggle('active', tab === 'upload');
       document.getElementById('tabCamera').classList.toggle('active', tab === 'camera');
+      document.getElementById('tabBarcode').classList.toggle('active', tab === 'barcode');
       document.getElementById('panelUpload').classList.toggle('active', tab === 'upload');
       document.getElementById('panelCamera').classList.toggle('active', tab === 'camera');
+      document.getElementById('panelBarcode').classList.toggle('active', tab === 'barcode');
       if (tab !== 'camera') stopCamera();
+      if (tab !== 'barcode') stopBarcodeCamera();
     }
 
     // ── SEND IMAGE BLOB TO REAL OCR API ───────────────────────────────────
@@ -376,6 +416,12 @@
       if (data.expiry && data.expiry !== 'Not found') {
         document.getElementById('prodExpiryDate').value = data.expiry;
         filled.push('Expiry Date');
+      }
+
+      const notesEl = document.getElementById('prodNotes');
+      if (data.raw_text && !notesEl.value.trim()) {
+        notesEl.value = data.raw_text.slice(0, 500);
+        filled.push('Notes');
       }
 
       if (filled.length > 0) {
@@ -508,6 +554,146 @@
         document.getElementById('btnLiveScan').style.background = 'var(--green)';
         clearTimeout(liveScanInterval);
       }
+    }
+
+    // ── BARCODE SCANNER ───────────────────────────────────────────────────
+    let barcodeCameraStream = null;
+
+    function selectCategoryValue(value) {
+      if (!value) return false;
+      const catSelect = document.getElementById('prodCategory');
+      const opts = [...catSelect.options].map((o) => o.value.toLowerCase());
+      const idx = opts.indexOf(value.toLowerCase());
+      if (idx >= 0) {
+        catSelect.selectedIndex = idx;
+        return true;
+      }
+      return false;
+    }
+
+    async function lookupBarcode(code) {
+      const url = `${BARCODE_LOOKUP_API()}?code=${encodeURIComponent(code)}`;
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      return res.json();
+    }
+
+    async function applyBarcodeResult(data) {
+      const errorBox = document.getElementById('errorBox');
+      const successBox = document.getElementById('successBox');
+      const filled = [];
+
+      document.getElementById('prodBarcode').value = data.barcode;
+      filled.push('Barcode');
+
+      const lookup = await lookupBarcode(data.barcode);
+      if (lookup && lookup.found) {
+        if (lookup.name) {
+          document.getElementById('prodName').value = lookup.name;
+          filled.push('Name');
+        }
+        if (lookup.category && selectCategoryValue(lookup.category)) {
+          filled.push('Category');
+        }
+        if (lookup.brand) {
+          const notesEl = document.getElementById('prodNotes');
+          if (!notesEl.value.trim()) notesEl.value = `Brand: ${lookup.brand}`;
+        }
+      }
+
+      successBox.textContent = filled.length
+        ? `✅ Detected: ${filled.join(' · ')}. Review and save.`
+        : `✅ Barcode ${data.barcode} detected. Add remaining details manually.`;
+      successBox.classList.add('show');
+      errorBox.classList.remove('show');
+    }
+
+    async function sendToBarcodeScan(blob) {
+      const errorBox = document.getElementById('errorBox');
+      const successBox = document.getElementById('successBox');
+      errorBox.classList.remove('show');
+      successBox.classList.remove('show');
+
+      const formData = new FormData();
+      formData.append('file', blob, 'barcode.jpg');
+
+      let res;
+      try {
+        res = await fetch(BARCODE_SCAN_API(), { method: 'POST', body: formData });
+      } catch (networkErr) {
+        errorBox.textContent = '❌ Cannot reach barcode scanner: ' + networkErr.message;
+        errorBox.classList.add('show');
+        return;
+      }
+
+      if (!res.ok) {
+        let detail = '';
+        try { detail = await res.text(); } catch (_) {}
+        errorBox.textContent = `❌ Barcode scan failed (HTTP ${res.status}): ${detail.slice(0, 120)}`;
+        errorBox.classList.add('show');
+        return;
+      }
+
+      const data = await res.json();
+      await applyBarcodeResult(data);
+    }
+
+    async function scanBarcodeFile(files) {
+      if (!files || !files.length) return;
+      const blob = files[0];
+      await sendToBarcodeScan(blob);
+    }
+
+    async function startBarcodeCamera() {
+      const video = document.getElementById('barcodeCameraStream');
+      try {
+        barcodeCameraStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment', width: { ideal: 1280 } },
+        });
+        video.srcObject = barcodeCameraStream;
+        video.style.display = 'block';
+        document.getElementById('btnStartBarcodeCam').style.display = 'none';
+        document.getElementById('btnCaptureBarcode').style.display = 'inline';
+        document.getElementById('btnStopBarcodeCam').style.display = 'inline';
+      } catch (err) {
+        document.getElementById('errorBox').textContent = '❌ Camera access denied: ' + err.message;
+        document.getElementById('errorBox').classList.add('show');
+      }
+    }
+
+    function stopBarcodeCamera() {
+      const video = document.getElementById('barcodeCameraStream');
+      if (barcodeCameraStream) {
+        barcodeCameraStream.getTracks().forEach((t) => t.stop());
+        barcodeCameraStream = null;
+      }
+      video.style.display = 'none';
+      document.getElementById('btnStartBarcodeCam').style.display = 'inline';
+      document.getElementById('btnCaptureBarcode').style.display = 'none';
+      document.getElementById('btnStopBarcodeCam').style.display = 'none';
+    }
+
+    function captureBarcodeFrame() {
+      const video = document.getElementById('barcodeCameraStream');
+      const canvas = document.getElementById('barcodeCameraCanvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0);
+      return new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+    }
+
+    async function captureAndScanBarcode() {
+      const captureText = document.getElementById('barcodeCaptureText');
+      const captureLoad = document.getElementById('barcodeCaptureLoading');
+      const btn = document.getElementById('btnCaptureBarcode');
+      btn.disabled = true;
+      captureText.style.display = 'none';
+      captureLoad.style.display = 'inline';
+      const blob = await captureBarcodeFrame();
+      await sendToBarcodeScan(blob);
+      btn.disabled = false;
+      captureText.style.display = 'inline';
+      captureLoad.style.display = 'none';
     }
   </script>
 </body>
