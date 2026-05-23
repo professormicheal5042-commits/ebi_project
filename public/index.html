@@ -10,7 +10,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap"
     rel="stylesheet" />
-  <script src="https://unpkg.com/@dotlottie/player-component@latest/dist/dotlottie-player.js"></script>
+
   <style>
     :root {
       --bg-base: #020c08;
@@ -413,6 +413,138 @@
       line-height: 1.5;
     }
 
+    /* About Developer */
+    .about-dev {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 0 24px;
+      animation: fadeInUp 0.8s ease-out;
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .about-dev-card {
+      background: rgba(4, 20, 16, 0.7);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 36px;
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .about-dev-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, var(--green-400), transparent);
+    }
+
+    .about-dev-avatar {
+      flex-shrink: 0;
+      width: 130px;
+      height: 130px;
+      border-radius: 50%;
+      border: 3px solid var(--green-400);
+      box-shadow: 0 0 30px var(--green-glow), 0 0 60px rgba(0, 230, 118, 0.08);
+      object-fit: cover;
+      object-position: center top;
+    }
+
+    .about-dev-info {
+      flex: 1;
+    }
+
+    .about-dev-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--green-400);
+      margin-bottom: 10px;
+    }
+
+    .about-dev-label .line {
+      width: 20px;
+      height: 2px;
+      background: var(--green-400);
+      border-radius: 2px;
+    }
+
+    .about-dev-name {
+      font-family: var(--font-display);
+      font-size: clamp(22px, 4vw, 28px);
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+
+    .about-dev-role {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.7;
+      margin-bottom: 14px;
+    }
+
+    .about-dev-bio {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.8;
+      margin-bottom: 18px;
+    }
+
+    .about-dev-bio strong {
+      color: var(--green-400);
+    }
+
+    .about-dev-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .about-dev-tag {
+      padding: 5px 14px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      background: var(--green-dim);
+      color: var(--green-400);
+      letter-spacing: 0.3px;
+    }
+
+    @media (max-width: 640px) {
+      .about-dev-card {
+        flex-direction: column;
+        text-align: center;
+        padding: 28px 20px;
+        gap: 20px;
+      }
+
+      .about-dev-avatar {
+        width: 110px;
+        height: 110px;
+      }
+
+      .about-dev-tags {
+        justify-content: center;
+      }
+    }
+
     /* Footer */
     .footer {
       text-align: center;
@@ -470,10 +602,12 @@
         </div>
       </a>
       <nav class="nav-actions">
+        <a href="#about-developer" class="btn-ghost">About Developer</a>
         <a href="/module/auth/login.html" class="btn-ghost">Sign In</a>
         <a href="/module/auth/register.html" class="btn-nav-primary">Get Started</a>
       </nav>
     </header>
+
 
     <main class="hero">
       <div class="hero-badge">
@@ -482,9 +616,7 @@
       </div>
 
       <div class="lottie-wrap">
-        <dotlottie-player src="shared/assets/lottie/login.lottie" background="transparent" speed="1" loop
-          autoplay></dotlottie-player>
-        <div class="lottie-fallback" style="display:none;" aria-hidden="true">🌿</div>
+        <div class="lottie-fallback" aria-hidden="true">🌿</div>
       </div>
 
       <h1>Never let a product<br /><span>expire unnoticed</span></h1>
@@ -516,6 +648,32 @@
         </div>
       </div>
     </main>
+
+    <!-- About Developer -->
+    <section class="about-dev" id="about-developer">
+      <div class="about-dev-card">
+        <img src="/assets/images/IMG-20260517-WA0018.jpg" alt="Jephthah Ebiayifhaga" class="about-dev-avatar" />
+        <div class="about-dev-info">
+          <div class="about-dev-label"><span class="line"></span> About the Developer</div>
+          <h2 class="about-dev-name">Jephthah Ebiayifhaga</h2>
+          <p class="about-dev-role">
+            Final Year Student · Department of Computer Science · Faculty of Computing
+          </p>
+          <p class="about-dev-bio">
+            I am a final year student at <strong>Southern Delta University, Ozoro</strong>, Delta State, Nigeria.
+            Passionate about building smart software solutions, I developed the EBI Expiry System as my
+            final year project to help businesses track product expiry dates efficiently using AI-powered alerts
+            and intelligent inventory management.
+          </p>
+          <div class="about-dev-tags">
+            <span class="about-dev-tag">🎓 Final Year Student</span>
+            <span class="about-dev-tag">💻 Computer Science</span>
+            <span class="about-dev-tag">🏛️ Faculty of Computing</span>
+            <span class="about-dev-tag">📍 Delta State, Nigeria</span>
+          </div>
+        </div>
+      </div>
+    </section>
 
     <footer class="footer">
       © 2026 JEPHTHAH EBIAYIFHAGA · FOC/23/009541 · Southern Delta University, Ozoro

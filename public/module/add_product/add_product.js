@@ -24,8 +24,6 @@ async function loadProductForEdit(id) {
   document.getElementById('prodUnit').value      = data.unit       || 'pcs';
   document.getElementById('prodMfgDate').value   = data.mfg_date   || '';
   document.getElementById('prodExpiryDate').value = data.expiry_date || '';
-  const barcodeEl = document.getElementById('prodBarcode');
-  if (barcodeEl) barcodeEl.value = data.barcode || '';
   document.getElementById('prodNotes').value     = data.notes      || '';
 }
 
@@ -55,7 +53,7 @@ async function handleSubmit(event) {
     mfg_date:   document.getElementById('prodMfgDate').value || null,
     expiry_date: document.getElementById('prodExpiryDate').value,
     notes:       document.getElementById('prodNotes').value,
-    barcode:     document.getElementById('prodBarcode')?.value || null,
+    barcode:     null,
   };
 
   const error = id ? await updateProduct(id, data) : await addProduct(data);

@@ -3,8 +3,9 @@ import io
 import json
 import re
 from pathlib import Path
-from urllib.error import URLError
-from urllib.request import urlopen
+from html import unescape
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 from fastapi import FastAPI, File, UploadFile, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -47,6 +48,11 @@ def _gemini_models() -> tuple[str, ...]:
     if override:
         return (override, *_DEFAULT_GEMINI_MODELS)
     return _DEFAULT_GEMINI_MODELS
+
+_URL_PATTERN = re.compile(r"^https?://", re.IGNORECASE)
+_FETCH_USER_AGENT = (
+    "Mozilla/5.0 (compatible; EBI-Product-Bot/1.0; +https://ebi-project.vercel.app)"
+)
 
 OFF_CATEGORIES = {
     "en:beverages": "Food",
@@ -113,6 +119,238 @@ def _run_gemini(image_bytes: bytes, prompt: str) -> str:
     )
 
 
+def _run_gemini_text(prompt: str) -> str:
+    import google.generativeai as genai
+
+    api_key = _gemini_key()
+    if not api_key:
+        raise HTTPException(
+            status_code=503,
+            detail="GEMINI_API_KEY is not set. Add it in Vercel → Project → Settings → Environment Variables.",
+        )
+
+    genai.configure(api_key=api_key)
+    errors: list[str] = []
+
+    for model_name in _gemini_models():
+        try:
+            model = genai.GenerativeModel(model_name)
+            response = model.generate_content(prompt)
+            text = (response.text or "").strip()
+            if text:
+                return text
+            errors.append(f"{model_name}: empty response")
+        except Exception as exc:
+            errors.append(f"{model_name}: {exc}")
+            continue
+
+    raise HTTPException(
+        status_code=500,
+        detail="Gemini text extraction failed. " + " | ".join(errors[-3:]),
+    )
+
+
+def _html_to_text(html: str, max_chars: int = 14000) -> str:
+    cleaned = re.sub(r"<script[^>]*>[\s\S]*?</script>", " ", html, flags=re.IGNORECASE)
+    cleaned = re.sub(r"<style[^>]*>[\s\S]*?</style>", " ", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"<noscript[^>]*>[\s\S]*?</noscript>", " ", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"<[^>]+>", " ", cleaned)
+    cleaned = unescape(cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    return cleaned[:max_chars]
+
+
+def _fetch_url_text(url: str, timeout: int = 15) -> str:
+    request = Request(
+        url,
+        headers={
+            "User-Agent": _FETCH_USER_AGENT,
+            "Accept": "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+        },
+    )
+    try:
+        with urlopen(request, timeout=timeout) as resp:
+            raw = resp.read(512_000)
+            charset = resp.headers.get_content_charset() or "utf-8"
+    except HTTPError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Could not open QR link (HTTP {exc.code}): {url}",
+        ) from exc
+    except (URLError, TimeoutError) as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Could not open QR link: {exc}",
+        ) from exc
+
+    try:
+        html = raw.decode(charset, errors="replace")
+    except LookupError:
+        html = raw.decode("utf-8", errors="replace")
+
+    text = _html_to_text(html)
+    if not text:
+        raise HTTPException(
+            status_code=422,
+            detail="The QR link opened but the page had no readable text to extract.",
+        )
+    return text
+
+
+def _extract_product_from_webpage(url: str, page_text: str) -> dict:
+    prompt = f"""You extract structured product details from a product web page.
+The user scanned a QR code (grid pattern) that links to this URL:
+{url}
+
+Page text (may be truncated):
+\"\"\"
+{page_text}
+\"\"\"
+
+Respond ONLY with a valid JSON object — no markdown:
+{{
+  "name": "product name as shown on the page, or 'Unknown'",
+  "category": "one of: Food, Medicine, Cosmetics, Household, Other",
+  "mfg_date": "manufacturing date YYYY-MM-DD, or 'Not found'",
+  "expiry": "expiry/best-before/use-by date YYYY-MM-DD, or 'Not found'",
+  "barcode": "GTIN/EAN/UPC digits only if visible, or 'Not found'",
+  "brand": "brand name or null",
+  "raw_text": "short summary of key product facts from the page"
+}}
+
+Rules:
+- Prefer explicit dates on the page; normalize to YYYY-MM-DD
+- For month/year only use last day of month
+- category must be exactly one of the five allowed values"""
+
+    data = _parse_gemini_json(_run_gemini_text(prompt))
+    return {
+        "name": data.get("name", "Unknown"),
+        "category": data.get("category", "Other"),
+        "mfg_date": data.get("mfg_date", "Not found"),
+        "expiry": data.get("expiry", "Not found"),
+        "barcode": data.get("barcode", "Not found"),
+        "brand": data.get("brand"),
+        "raw_text": data.get("raw_text", ""),
+    }
+
+
+def _decode_code_from_image(image_bytes: bytes) -> tuple[str, str, str]:
+    pyzbar_result = _try_pyzbar(image_bytes)
+    if pyzbar_result:
+        return (
+            pyzbar_result["barcode"],
+            pyzbar_result.get("format", "UNKNOWN"),
+            pyzbar_result.get("source", "pyzbar"),
+        )
+
+    prompt = """You are a barcode and QR code reader (including grid-style Data Matrix / QR codes).
+Analyze this image and find the encoded payload.
+Respond ONLY with valid JSON — no markdown.
+
+{
+  "barcode": "decoded payload: URL, GTIN, or alphanumeric code, or 'Not found'",
+  "format": "symbology e.g. QR_CODE, DATA_MATRIX, EAN_13, or 'Unknown'"
+}
+
+Rules:
+- For QR codes, return the full URL if present (https://...)
+- Return digits/letters only for linear barcodes
+- If multiple codes, return the clearest one"""
+
+    data = _parse_gemini_json(_run_gemini(image_bytes, prompt))
+    payload = str(data.get("barcode", "Not found")).strip()
+    if payload.lower() in ("not found", "none", "unknown", ""):
+        raise HTTPException(
+            status_code=422,
+            detail="No QR or barcode detected in image. Crop tightly around the grid code.",
+        )
+    return payload, str(data.get("format", "Unknown")), "gemini"
+
+
+def _lookup_off_product(code: str) -> dict:
+    clean = re.sub(r"\s+", "", code.strip())
+    url = f"https://world.openfoodfacts.org/api/v0/product/{clean}.json"
+    try:
+        with urlopen(url, timeout=10) as resp:
+            payload = json.loads(resp.read().decode("utf-8"))
+    except (URLError, TimeoutError, json.JSONDecodeError):
+        return {"found": False, "barcode": clean}
+
+    if payload.get("status") != 1:
+        return {"found": False, "barcode": clean}
+
+    product = payload.get("product") or {}
+    name = (
+        product.get("product_name")
+        or product.get("product_name_en")
+        or product.get("generic_name")
+    )
+    tags = product.get("categories_tags") or []
+    return {
+        "found": bool(name),
+        "barcode": clean,
+        "name": name,
+        "category": _map_off_category(tags),
+        "brand": product.get("brands"),
+    }
+
+
+def _enrich_payload(payload: str) -> dict:
+    if _URL_PATTERN.match(payload):
+        page_text = _fetch_url_text(payload)
+        extracted = _extract_product_from_webpage(payload, page_text)
+        barcode = extracted.get("barcode", "Not found")
+        clean_barcode = re.sub(r"\D", "", str(barcode)) if barcode not in (
+            "Not found",
+            "",
+            None,
+        ) else ""
+        if clean_barcode and len(clean_barcode) >= 8:
+            off = _lookup_off_product(clean_barcode)
+            if off.get("found"):
+                if not extracted.get("name") or extracted.get("name") == "Unknown":
+                    extracted["name"] = off.get("name")
+                if extracted.get("category") in (None, "Other") and off.get("category"):
+                    extracted["category"] = off.get("category")
+                if not extracted.get("brand"):
+                    extracted["brand"] = off.get("brand")
+        return {
+            **extracted,
+            "payload": payload,
+            "url": payload,
+            "enrichment": "web_scrape",
+        }
+
+    clean = re.sub(r"\s+", "", payload)
+    off = _lookup_off_product(clean) if clean.isdigit() and len(clean) >= 8 else {"found": False}
+    if off.get("found"):
+        return {
+            "name": off.get("name") or "Unknown",
+            "category": off.get("category") or "Other",
+            "mfg_date": "Not found",
+            "expiry": "Not found",
+            "barcode": clean,
+            "brand": off.get("brand"),
+            "raw_text": "",
+            "payload": payload,
+            "enrichment": "openfoodfacts",
+        }
+
+    return {
+        "name": "Unknown",
+        "category": "Other",
+        "mfg_date": "Not found",
+        "expiry": "Not found",
+        "barcode": clean or payload,
+        "brand": None,
+        "raw_text": "",
+        "payload": payload,
+        "enrichment": "none",
+    }
+
+
 async def _read_image_jpeg(file: UploadFile) -> bytes:
     contents = await file.read()
     if not contents:
@@ -169,6 +407,8 @@ def root():
         "health": "/api/health",
         "extract": "POST /api/extract-expiry",
         "scan_barcode": "POST /api/scan-barcode",
+        "scan_qr_product": "POST /api/scan-qr-product",
+        "enrich_qr_payload": "POST /api/enrich-qr-payload",
         "lookup_barcode": "GET /api/lookup-barcode?code=...",
         "gemini_configured": bool(_gemini_key()),
     }
@@ -215,47 +455,126 @@ Rules:
     }
 
 
+@app.post("/api/scan-qr-product")
+async def scan_qr_product(file: UploadFile = File(...)):
+    """Decode a grid QR / Data Matrix from an image and enrich from its URL or barcode."""
+    image_bytes = await _read_image_jpeg(file)
+    payload, code_format, source = _decode_code_from_image(image_bytes)
+    enriched = _enrich_payload(payload)
+
+    barcode_value = enriched.get("barcode", payload)
+    if isinstance(barcode_value, str) and barcode_value.lower() in ("not found", "unknown", ""):
+        barcode_value = re.sub(r"\s+", "", payload) if not _URL_PATTERN.match(payload) else payload
+
+    return {
+        "payload": payload,
+        "barcode": barcode_value,
+        "format": code_format,
+        "source": source,
+        "url": enriched.get("url"),
+        "enrichment": enriched.get("enrichment"),
+        "name": enriched.get("name", "Unknown"),
+        "category": enriched.get("category", "Other"),
+        "expiry": enriched.get("expiry", "Not found"),
+        "mfg_date": enriched.get("mfg_date", "Not found"),
+        "brand": enriched.get("brand"),
+        "raw_text": enriched.get("raw_text", ""),
+    }
+
+
+from fastapi import Form
+
+
+@app.post("/api/enrich-qr-payload")
+async def enrich_qr_payload(payload: str = Form(...)):
+    """Enrich an already-decoded QR/barcode string (URL or numeric code) into product details.
+    
+    Use this when the client-side scanner (e.g. jsQR) has already decoded the QR code text.
+    This avoids re-sending the full image and re-decoding it.
+    """
+    payload = payload.strip()
+    if not payload:
+        raise HTTPException(status_code=422, detail="payload is required and cannot be empty.")
+
+    enriched = _enrich_payload(payload)
+
+    barcode_value = enriched.get("barcode", payload)
+    if isinstance(barcode_value, str) and barcode_value.lower() in ("not found", "unknown", ""):
+        barcode_value = re.sub(r"\s+", "", payload) if not _URL_PATTERN.match(payload) else payload
+
+    return {
+        "payload": payload,
+        "barcode": barcode_value,
+        "format": "QR_CODE",
+        "source": "client_jsqr",
+        "url": enriched.get("url"),
+        "enrichment": enriched.get("enrichment"),
+        "name": enriched.get("name", "Unknown"),
+        "category": enriched.get("category", "Other"),
+        "expiry": enriched.get("expiry", "Not found"),
+        "mfg_date": enriched.get("mfg_date", "Not found"),
+        "brand": enriched.get("brand"),
+        "raw_text": enriched.get("raw_text", ""),
+    }
+
+
 @app.post("/api/scan-barcode")
 async def scan_barcode(file: UploadFile = File(...)):
     image_bytes = await _read_image_jpeg(file)
+    payload, code_format, source = _decode_code_from_image(image_bytes)
 
-    pyzbar_result = _try_pyzbar(image_bytes)
-    if pyzbar_result:
+    if _URL_PATTERN.match(payload):
+        # Reject known non-product generic domains
+        bad_domains = ["youtube.com", "youtu.be", "google.com", "facebook.com", "instagram.com", "twitter.com", "x.com"]
+        if any(domain in payload.lower() for domain in bad_domains):
+            raise HTTPException(
+                status_code=422,
+                detail=f"The scanned QR code is a generic link ({payload}) and is not a valid product."
+            )
+
+        enriched = _enrich_payload(payload)
+        barcode_value = enriched.get("barcode", "")
+        if isinstance(barcode_value, str) and (barcode_value.lower() in ("not found", "unknown", "") or _URL_PATTERN.match(barcode_value)):
+            barcode_value = "" # Do not populate URL into the barcode field
+
+        # If it's a URL and we couldn't extract ANY product name, reject it
+        if enriched.get("name") == "Unknown" and not barcode_value:
+            raise HTTPException(
+                status_code=422,
+                detail=f"The scanned QR code URL ({payload}) does not contain recognizable product details."
+            )
+
         return {
-            **pyzbar_result,
-            "raw_text": "",
+            "barcode": barcode_value,
+            "format": code_format,
+            "source": source,
+            "payload": payload,
+            "url": payload,
+            "enrichment": enriched.get("enrichment"),
+            "name": enriched.get("name"),
+            "category": enriched.get("category"),
+            "expiry": enriched.get("expiry"),
+            "mfg_date": enriched.get("mfg_date"),
+            "brand": enriched.get("brand"),
+            "raw_text": enriched.get("raw_text", ""),
         }
 
-    prompt = """You are a barcode and QR code reader.
-Analyze this image and find any barcode or QR code.
-Respond ONLY with a valid JSON object — no markdown, no explanation.
-
-{
-  "barcode": "the numeric or alphanumeric code only, or 'Not found' if none visible",
-  "format": "symbology e.g. EAN_13, UPC_A, QR_CODE, CODE_128, or 'Unknown'",
-  "raw_text": "any other readable text near the code"
-}
-
-Rules:
-- Return digits/letters of the code only, no spaces unless part of the code
-- If multiple codes, return the clearest one
-- If no code is visible, set barcode to 'Not found'"""
-
-    data = _parse_gemini_json(_run_gemini(image_bytes, prompt))
-    barcode = str(data.get("barcode", "Not found")).strip()
-
-    if barcode.lower() in ("not found", "none", "unknown", ""):
-        raise HTTPException(
-            status_code=422,
-            detail="No barcode detected in image. Try a clearer photo of the code.",
-        )
-
-    return {
-        "barcode": barcode,
-        "format": data.get("format", "Unknown"),
-        "raw_text": data.get("raw_text", ""),
-        "source": "gemini",
+    result = {
+        "barcode": re.sub(r"\s+", "", payload),
+        "format": code_format,
+        "source": source,
+        "raw_text": "",
+        "payload": payload,
     }
+
+    off = _lookup_off_product(result["barcode"])
+    if off.get("found"):
+        result["enrichment"] = "openfoodfacts"
+        result["name"] = off.get("name")
+        result["category"] = off.get("category")
+        result["brand"] = off.get("brand")
+
+    return result
 
 
 @app.get("/api/lookup-barcode")

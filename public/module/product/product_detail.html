@@ -26,12 +26,12 @@
       <a class="sb-link active" href="../inventory/inventory.html"><span class="sb-icon">📦</span> Inventory</a>
       <a class="sb-link" href="../add_product/add_product.html"><span class="sb-icon">➕</span> Add Product</a>
       <a class="sb-link" href="../alerts/alerts.html"><span class="sb-icon">🔔</span> Alerts <span
-          class="sb-badge">3</span></a>
+          class="sb-badge" id="alertBadge" style="display:none">0</span></a>
       <a class="sb-link" href="../reports/reports.html"><span class="sb-icon">📈</span> Reports</a>
       <a class="sb-link" href="../profile/profile.html"><span class="sb-icon">👤</span> Profile</a>
     </nav>
     <div class="sb-divider"></div>
-    <div class="sb-footer"><button class="sb-logout" onclick="handleLogout()">🚪 Logout</button></div>
+    <div class="sb-footer"><button class="sb-logout" onclick="window.handleLogout()">🚪 Logout</button></div>
   </aside>
 
   <div class="main">
@@ -176,6 +176,20 @@
     }
 
     render(product);
+  </script>
+  <script type="module">
+    import { supabase } from '../../shared/js/supabase.js';
+
+    // Route guard
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      window.location.href = '../auth/login.html';
+    }
+
+    window.handleLogout = async function() {
+      await supabase.auth.signOut();
+      window.location.href = '../auth/login.html';
+    };
   </script>
 </body>
 

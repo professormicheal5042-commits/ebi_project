@@ -1,4 +1,6 @@
--- 0. Clean Up Existing Tables (Warning: this deletes existing data!)
+remove hardcoded values and add backend values here is the database database_setup.sql,,,
+
+public\module\reports-- 0. Clean Up Existing Tables (Warning: this deletes existing data!)
 DROP TABLE IF EXISTS usage_logs CASCADE;
 DROP TABLE IF EXISTS alerts CASCADE;
 DROP TABLE IF EXISTS products CASCADE;

@@ -1,120 +1,284 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Reports — EBI Expiry Alert System</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="./reports.css"/>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="./reports.css" />
 </head>
+
 <body>
-<div class="sidebar-overlay" id="overlay" onclick="toggleSidebar()"></div>
-<aside class="sidebar" id="sidebar">
-  <div class="sb-logo"><div class="sb-logo-icon">🌿</div><div><div class="sb-logo-text">EBI System</div><div class="sb-logo-sub">AI Expiry Guard</div></div></div>
-  <nav class="sb-nav">
-    <a class="sb-link" href="../dashboard/dashboard.html"><span class="sb-icon">📊</span> Dashboard</a>
-    <a class="sb-link" href="../inventory/inventory.html"><span class="sb-icon">📦</span> Inventory</a>
-    <a class="sb-link" href="../add_product/add_product.html"><span class="sb-icon">➕</span> Add Product</a>
-    <a class="sb-link" href="../alerts/alerts.html"><span class="sb-icon">🔔</span> Alerts <span class="sb-badge">3</span></a>
-    <a class="sb-link active" href="reports.html"><span class="sb-icon">📈</span> Reports</a>
-    <a class="sb-link" href="../profile/profile.html"><span class="sb-icon">👤</span> Profile</a>
-  </nav>
-  <div class="sb-divider"></div>
-  <div class="sb-footer"><button class="sb-logout" onclick="handleLogout()">🚪 Logout</button></div>
-</aside>
+  <div class="sidebar-overlay" id="overlay" onclick="toggleSidebar()"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-logo">
+      <div class="sb-logo-icon">🌿</div>
+      <div>
+        <div class="sb-logo-text">EBI System</div>
+        <div class="sb-logo-sub">AI Expiry Guard</div>
+      </div>
+    </div>
+    <nav class="sb-nav">
+      <a class="sb-link" href="../dashboard/dashboard.html"><span class="sb-icon">📊</span> Dashboard</a>
+      <a class="sb-link" href="../inventory/inventory.html"><span class="sb-icon">📦</span> Inventory</a>
+      <a class="sb-link" href="../add_product/add_product.html"><span class="sb-icon">➕</span> Add Product</a>
+      <a class="sb-link" href="../alerts/alerts.html"><span class="sb-icon">🔔</span> Alerts <span
+          class="sb-badge" id="alertBadge" style="display:none">0</span></a>
+      <a class="sb-link active" href="reports.html"><span class="sb-icon">📈</span> Reports</a>
+      <a class="sb-link" href="../profile/profile.html"><span class="sb-icon">👤</span> Profile</a>
+    </nav>
+    <div class="sb-divider"></div>
+    <div class="sb-footer"><button class="sb-logout" onclick="window.handleLogout()">🚪 Logout</button></div>
+  </aside>
 
-<div class="main">
-  <div class="topbar">
-    <button class="hamburger" onclick="toggleSidebar()">☰</button>
-    <h1>Reports &amp; Analytics</h1>
+  <div class="main">
+    <div class="topbar">
+      <button class="hamburger" onclick="toggleSidebar()">☰</button>
+      <h1>Reports &amp; Analytics</h1>
+    </div>
+    <div class="content">
+
+      <!-- SUMMARY CARDS -->
+      <div class="summary-row">
+        <div class="sum-card">
+          <div class="sum-val green" id="sumSafe">--</div>
+          <div class="sum-label">✅ Safe Products</div>
+        </div>
+        <div class="sum-card">
+          <div class="sum-val orange" id="sumSoon">--</div>
+          <div class="sum-label">⚠️ Expiring Soon</div>
+        </div>
+        <div class="sum-card">
+          <div class="sum-val red" id="sumExpired">--</div>
+          <div class="sum-label">🚨 Expired</div>
+        </div>
+      </div>
+
+      <!-- OVERALL STATUS -->
+      <div class="panel">
+        <div class="panel-title">Overall Status Distribution</div>
+        <div class="chart-row">
+          <div class="chart-label-row">
+            <span class="chart-label-left">✅ Safe</span>
+            <span class="chart-label-right" id="labelSafe">-- products (0%)</span>
+          </div>
+          <div class="bar-bg">
+            <div class="bar-fill green" id="safeBar" style="width:0%"></div>
+          </div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-label-row">
+            <span class="chart-label-left">⚠️ Expiring Soon</span>
+            <span class="chart-label-right" id="labelSoon">-- products (0%)</span>
+          </div>
+          <div class="bar-bg">
+            <div class="bar-fill orange" id="soonBar" style="width:0%"></div>
+          </div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-label-row">
+            <span class="chart-label-left">🚨 Expired</span>
+            <span class="chart-label-right" id="labelExpired">-- products (0%)</span>
+          </div>
+          <div class="bar-bg">
+            <div class="bar-fill red" id="expiredBar" style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CATEGORY BREAKDOWN -->
+      <div class="panel">
+        <div class="panel-title">
+          Breakdown by Category
+          <button class="btn-export" id="btnExport">⬇️ Export CSV</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Category</th>
+                <th>Total</th>
+                <th>Safe</th>
+                <th>Expiring Soon</th>
+                <th>Expired</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody">
+              <tr>
+                <td colspan="5" style="text-align:center; padding: 20px; color: var(--text-muted);">Loading...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
   </div>
-  <div class="content">
 
-    <!-- SUMMARY CARDS -->
-    <div class="summary-row">
-      <div class="sum-card"><div class="sum-val green">16</div><div class="sum-label">✅ Safe Products</div></div>
-      <div class="sum-card"><div class="sum-val orange">5</div><div class="sum-label">⚠️ Expiring Soon</div></div>
-      <div class="sum-card"><div class="sum-val red">3</div><div class="sum-label">🚨 Expired</div></div>
-    </div>
+  <script type="module">
+    import { supabase } from '../../shared/js/supabase.js';
 
-    <!-- OVERALL STATUS -->
-    <div class="panel">
-      <div class="panel-title">Overall Status Distribution</div>
-      <div class="chart-row">
-        <div class="chart-label-row">
-          <span class="chart-label-left">✅ Safe</span>
-          <span class="chart-label-right">16 products (67%)</span>
-        </div>
-        <div class="bar-bg"><div class="bar-fill green" id="safeBar" style="width:0%"></div></div>
-      </div>
-      <div class="chart-row">
-        <div class="chart-label-row">
-          <span class="chart-label-left">⚠️ Expiring Soon</span>
-          <span class="chart-label-right">5 products (21%)</span>
-        </div>
-        <div class="bar-bg"><div class="bar-fill orange" id="soonBar" style="width:0%"></div></div>
-      </div>
-      <div class="chart-row">
-        <div class="chart-label-row">
-          <span class="chart-label-left">🚨 Expired</span>
-          <span class="chart-label-right">3 products (12%)</span>
-        </div>
-        <div class="bar-bg"><div class="bar-fill red" id="expiredBar" style="width:0%"></div></div>
-      </div>
-    </div>
+    // State
+    let globalProducts = [];
+    let globalCatStats = {};
 
-    <!-- CATEGORY BREAKDOWN -->
-    <div class="panel">
-      <div class="panel-title">
-        Breakdown by Category
-        <button class="btn-export" onclick="exportCSV()">⬇️ Export CSV</button>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr><th>Category</th><th>Total</th><th>Safe</th><th>Expiring Soon</th><th>Expired</th></tr>
-          </thead>
-          <tbody>
-            <tr><td>🍎 Food</td><td>12</td><td class="td-safe">6</td><td class="td-soon">4</td><td class="td-expired">2</td></tr>
-            <tr><td>💊 Medicine</td><td>7</td><td class="td-safe">6</td><td class="td-soon">1</td><td class="td-expired">1</td></tr>
-            <tr><td>🏠 Household</td><td>3</td><td class="td-safe">3</td><td class="td-soon">0</td><td class="td-expired">0</td></tr>
-            <tr><td>📦 Other</td><td>2</td><td class="td-safe">2</td><td class="td-soon">0</td><td class="td-expired">0</td></tr>
-            <tr style="border-top:2px solid var(--border);font-weight:700;"><td>Total</td><td>24</td><td class="td-safe">16</td><td class="td-soon">5</td><td class="td-expired">3</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
+    // 1. ROUTE GUARD & SESSION
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      window.location.href = '../auth/login.html';
+    } else {
+      // 2. FETCH PRODUCTS
+      const user = session.user;
+      const { data: products } = await supabase
+        .from('products')
+        .select('*')
+        .eq('user_id', user.id);
 
-  </div>
-</div>
+      if (products) {
+        globalProducts = products;
+        processStats(products);
+      } else {
+        processStats([]);
+      }
 
-<script>
-  // Animate bars
-  setTimeout(() => {
-    document.getElementById('safeBar').style.width = '67%';
-    document.getElementById('soonBar').style.width = '21%';
-    document.getElementById('expiredBar').style.width = '12%';
-  }, 300);
+      // Sidebar badge update
+      const badge = document.getElementById('alertBadge');
+      if (badge) {
+        const readAlerts = JSON.parse(localStorage.getItem('readAlerts') || '[]');
+        let unreadCount = 0;
+        globalProducts.forEach(p => {
+          const expDate = new Date(p.expiry_date).getTime();
+          const daysLeft = Math.ceil((expDate - new Date().getTime()) / 86400000);
+          if (daysLeft <= 7 && !readAlerts.includes(p.id)) {
+            unreadCount++;
+          }
+        });
+        if (unreadCount > 0) {
+          badge.textContent = unreadCount;
+          badge.style.display = 'inline-flex';
+        } else {
+          badge.style.display = 'none';
+        }
+      }
+    }
 
-  function exportCSV() {
-    const rows = [
-      ['Category','Total','Safe','Expiring Soon','Expired'],
-      ['Food',12,6,4,2],
-      ['Medicine',7,6,1,1],
-      ['Household',3,3,0,0],
-      ['Other',2,2,0,0],
-    ];
-    const csv = rows.map(r => r.join(',')).join('\n');
-    const a = document.createElement('a');
-    a.href = 'data:text/csv,' + encodeURIComponent(csv);
-    a.download = 'ebi_report_' + new Date().toISOString().slice(0,10) + '.csv';
-    a.click();
-  }
+    function processStats(products) {
+      let safe = 0, soon = 0, expired = 0;
+      const nowMs = new Date().getTime();
+      const catStats = {};
 
-  function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('open');
-    document.getElementById('overlay').classList.toggle('open');
-  }
-</script>
+      products.forEach(p => {
+        const cat = p.category || 'Other';
+        if (!catStats[cat]) catStats[cat] = { total: 0, safe: 0, soon: 0, expired: 0 };
+
+        catStats[cat].total++;
+
+        const daysLeft = Math.ceil((new Date(p.expiry_date).getTime() - nowMs) / 86400000);
+        if (daysLeft < 0) {
+          expired++;
+          catStats[cat].expired++;
+        } else if (daysLeft <= 7) {
+          soon++;
+          catStats[cat].soon++;
+        } else {
+          safe++;
+          catStats[cat].safe++;
+        }
+      });
+
+      globalCatStats = catStats;
+      const total = safe + soon + expired;
+
+      // Update Summary Cards
+      document.getElementById('sumSafe').textContent = safe;
+      document.getElementById('sumSoon').textContent = soon;
+      document.getElementById('sumExpired').textContent = expired;
+
+      // Update Overall Bars
+      if (total > 0) {
+        const safePct = Math.round((safe / total) * 100);
+        const soonPct = Math.round((soon / total) * 100);
+        const expiredPct = Math.round((expired / total) * 100);
+
+        document.getElementById('labelSafe').textContent = `${safe} products (${safePct}%)`;
+        document.getElementById('labelSoon').textContent = `${soon} products (${soonPct}%)`;
+        document.getElementById('labelExpired').textContent = `${expired} products (${expiredPct}%)`;
+
+        setTimeout(() => {
+          document.getElementById('safeBar').style.width = `${safePct}%`;
+          document.getElementById('soonBar').style.width = `${soonPct}%`;
+          document.getElementById('expiredBar').style.width = `${expiredPct}%`;
+        }, 300);
+      } else {
+        document.getElementById('labelSafe').textContent = `0 products (0%)`;
+        document.getElementById('labelSoon').textContent = `0 products (0%)`;
+        document.getElementById('labelExpired').textContent = `0 products (0%)`;
+        document.getElementById('tableBody').innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 20px; color: var(--text-muted);">No products found</td></tr>`;
+        return;
+      }
+
+      // Update Table
+      const tbody = document.getElementById('tableBody');
+      const catIcons = { 'Food': '🍎', 'Medicine': '💊', 'Household': '🏠', 'Cosmetics': '💄', 'Other': '📦' };
+
+      if (Object.keys(catStats).length > 0) {
+        let html = '';
+        for (const [cat, stats] of Object.entries(catStats)) {
+          html += `<tr>
+          <td>${catIcons[cat] || '📦'} ${cat}</td>
+          <td>${stats.total}</td>
+          <td class="td-safe">${stats.safe}</td>
+          <td class="td-soon">${stats.soon}</td>
+          <td class="td-expired">${stats.expired}</td>
+        </tr>`;
+        }
+        // Add Total Row
+        html += `<tr style="border-top:2px solid var(--border);font-weight:700;">
+        <td>Total</td>
+        <td>${total}</td>
+        <td class="td-safe">${safe}</td>
+        <td class="td-soon">${soon}</td>
+        <td class="td-expired">${expired}</td>
+      </tr>`;
+        tbody.innerHTML = html;
+      }
+    }
+
+    // Export CSV
+    document.getElementById('btnExport').addEventListener('click', () => {
+      if (Object.keys(globalCatStats).length === 0) return alert('No data to export!');
+
+      const rows = [['Category', 'Total', 'Safe', 'Expiring Soon', 'Expired']];
+      let tTotal = 0, tSafe = 0, tSoon = 0, tExpired = 0;
+
+      for (const [cat, stats] of Object.entries(globalCatStats)) {
+        rows.push([cat, stats.total, stats.safe, stats.soon, stats.expired]);
+        tTotal += stats.total; tSafe += stats.safe; tSoon += stats.soon; tExpired += stats.expired;
+      }
+      rows.push(['Total', tTotal, tSafe, tSoon, tExpired]);
+
+      const csv = rows.map(r => r.join(',')).join('\n');
+      const a = document.createElement('a');
+      a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+      a.download = 'ebi_report_' + new Date().toISOString().slice(0, 10) + '.csv';
+      a.click();
+    });
+
+    // Sidebar toggle
+    window.toggleSidebar = function () {
+      document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('overlay').classList.toggle('open');
+    }
+
+    // Logout
+    window.handleLogout = async function () {
+      await supabase.auth.signOut();
+      window.location.href = '../auth/login.html';
+    }
+  </script>
 </body>
+
 </html>

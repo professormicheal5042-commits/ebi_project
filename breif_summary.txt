@@ -1,0 +1,211 @@
+================================================================================
+EBI EXPIRY ALERT SYSTEM — PROJECT SUMMARY (FOR EXAMINER / PRESENTATION)
+================================================================================
+
+PROJECT NAME
+  EBI Expiry Alert System (EBI System / AI Expiry Guard)
+
+PURPOSE
+  A web application that helps users track product expiry dates, manage inventory,
+  receive alerts before items expire, and add products quickly using AI (camera,
+  label OCR, barcode, and QR code scanning).
+
+
+================================================================================
+1. WHAT TYPE OF APPLICATION IS THIS?
+================================================================================
+
+  • It is primarily a STATIC WEBSITE for the user interface.
+  • There is NO traditional server-rendered Python web pages (no Django/Flask
+    templates). The browser loads HTML files and JavaScript runs in the client.
+  • Business data (products, alerts, profiles) is stored in a cloud database
+    (Supabase), not in local files.
+  • A separate Python API (FastAPI) on Vercel handles image/OCR/AI tasks only.
+
+
+================================================================================
+2. FRONTEND TECHNOLOGIES
+================================================================================
+
+  HTML
+    • Each screen is its own HTML file under public/module/ (e.g. dashboard,
+      inventory, add_product, alerts, reports, profile, auth).
+    • Landing page: public/index.html
+
+  CSS (custom design — not Bootstrap)
+    • Styling uses custom CSS files (e.g. add_product.css) and embedded <style>
+      blocks with CSS variables (--green-400, --bg-base, etc.).
+    • Fonts: Google Fonts (Inter, Space Grotesk).
+    • Responsive layout (sidebar, grids, mobile hamburger menu).
+    • Note: This project does not use the Bootstrap framework; design is hand-built.
+
+  JavaScript (vanilla, no React/Vue)
+    • Module scripts per page (dashboard.js, inventory.js, auth.js, etc.).
+    • ES modules (import/export) for shared code.
+    • Supabase JavaScript client loaded from CDN (esm.sh) in public/shared/js/supabase.js
+    • API URLs centralized in public/shared/js/config.js
+
+  Third-party browser libraries
+    • Cropper.js — crop uploaded images before OCR/QR scan (add product page)
+    • Browser APIs — getUserMedia for live camera capture on labels and codes
+
+
+================================================================================
+3. BACKEND / DATA — HOW IT WORKS
+================================================================================
+
+The system uses TWO backends that work together:
+
+  A) SUPABASE (main application backend — data + authentication)
+  ─────────────────────────────────────────────────────────────
+  • Service: Supabase (PostgreSQL database + Auth + Row Level Security)
+  • URL configured in: public/shared/js/supabase.js
+
+  Authentication
+    • Users register and log in via Supabase Auth (email/password).
+    • Session is checked on protected pages; unauthenticated users redirect to login.
+    • Each user only sees their own data (enforced by RLS policies).
+
+  Database tables (see database_setup.sql)
+    • products   — name, category, quantity, unit, mfg_date, expiry_date,
+                   notes, barcode, user_id
+    • alerts     — expiry warnings linked to products
+    • profiles   — user full name
+    • usage_logs — history of product usage actions
+
+  How the frontend talks to Supabase
+    • JavaScript calls supabase.from('products').select(), .insert(), .update(), etc.
+    • Example: Add Product form saves directly to Supabase from the browser.
+    • Dashboard/inventory/reports read live data from Supabase queries.
+
+  Security
+    • Row Level Security (RLS): policies ensure auth.uid() = user_id on all tables.
+    • Anon key is public in the client; RLS prevents users accessing others' rows.
+
+
+  B) PYTHON API ON VERCEL (AI / OCR / barcode service)
+  ─────────────────────────────────────────────────────
+  • File: api/index.py
+  • Framework: FastAPI
+  • Hosted: Vercel serverless Python (@vercel/python)
+  • Live base URL: https://ebi-project.vercel.app
+
+  This API does NOT store products in its own database. It processes images and
+  returns JSON; the browser then fills the form and the user saves to Supabase.
+
+  Endpoints
+    • GET  /api/health              — check API is running
+    • POST /api/extract-expiry      — read label image (Gemini Vision): name,
+                                      category, manufacturing date, expiry date
+    • POST /api/scan-barcode        — decode barcode/QR from image
+    • POST /api/scan-qr-product     — decode grid QR, open URL if present, scrape
+                                      product page with AI, return details
+    • GET  /api/lookup-barcode?code= — lookup product info via Open Food Facts API
+
+  Python libraries
+    • FastAPI, uvicorn — web API
+    • Pillow — image handling
+    • google-generativeai — Google Gemini for OCR and web-page text extraction
+    • urllib — fetch product pages linked from QR codes
+    • Optional: pyzbar — local barcode decode when available
+
+  Environment
+    • GEMINI_API_KEY — set in Vercel dashboard (required for AI features)
+    • Local dev: python -m uvicorn api.index:app --reload --port 8000
+
+
+================================================================================
+4. HOSTING & DEPLOYMENT ARCHITECTURE
+================================================================================
+
+  The project is split across two hosts (common pattern: static UI + API):
+
+  FRONTEND (static files)
+    • Firebase Hosting
+    • Config: firebase.json — serves the public/ folder
+    • Deploy command: npm run deploy:hosting  (firebase deploy --only hosting)
+
+  BACKEND API (Python)
+    • Vercel
+    • Config: vercel.json — routes all /api/* to api/index.py
+    • Deploy command: npm run deploy:api  (vercel --prod)
+    • Full deploy both: npm run deploy:all
+
+  DATABASE & AUTH
+    • Supabase cloud (no self-hosted database server)
+
+  GITHUB (version control + optional CI)
+    • Code can be pushed to GitHub for backup and collaboration.
+    • Vercel and Firebase can connect to a GitHub repo for automatic deploys
+      on push (if configured in their dashboards).
+
+  Typical terminal commands (from project folder):
+
+    git add .
+    git commit -m "Describe your changes"
+    git push origin main
+
+    npm run deploy:api        # deploy Python API to Vercel
+    npm run deploy:hosting    # deploy static site to Firebase
+    npm run deploy:all        # deploy both
+
+
+================================================================================
+5. MAIN MODULES (USER-FACING FEATURES)
+================================================================================
+
+  • Auth (login, register, OTP) — Supabase sign-in/sign-up
+  • Dashboard — summary stats, recent alerts, KPI cards
+  • Inventory — list/search products from Supabase
+  • Add Product — manual entry + AI assist:
+      - Upload & crop label → OCR expiry/name
+      - Live camera capture
+      - Barcode/QR scan (crop grid QR → open link → auto-fill)
+  • Product detail — view/edit single product
+  • Alerts — expiry notifications
+  • Reports — usage/expiry reporting
+  • Profile — user profile settings
+
+
+================================================================================
+6. DATA FLOW EXAMPLE (ADD PRODUCT WITH QR)
+================================================================================
+
+  1. User uploads image and crops the QR code in the browser.
+  2. Browser sends image (FormData) to Vercel: POST /api/scan-qr-product
+  3. Python decodes QR; if it is a URL, fetches the webpage and uses Gemini to
+     extract product name, dates, category, barcode.
+  4. JSON response returns to the browser; JavaScript fills the form fields.
+  5. User clicks Save → JavaScript inserts row into Supabase products table.
+  6. Dashboard and alerts read that row on next page load.
+
+
+================================================================================
+7. KEY POINTS FOR THE EXAMINER
+================================================================================
+
+  • Static frontend (HTML/CSS/JS) — fast, simple hosting on Firebase.
+  • Supabase = real backend for users, products, and security (RLS).
+  • Python on Vercel = specialized AI/OCR microservice, not the main CRUD server.
+  • AI (Gemini) reduces manual data entry from labels, barcodes, and QR product links.
+  • Architecture is modular: UI, database, and AI API can be updated independently.
+  • Suitable for small business / home inventory expiry management with multi-user login.
+
+
+================================================================================
+8. PROJECT STRUCTURE (SIMPLIFIED)
+================================================================================
+
+  ebi_project/
+    public/                 → static website (HTML, CSS, JS)
+      module/               → app pages (dashboard, inventory, add_product, …)
+      shared/js/            → supabase.js, config.js
+    api/
+      index.py              → FastAPI OCR/barcode/QR service
+    database_setup.sql      → Supabase schema + RLS policies
+    firebase.json           → Firebase Hosting config
+    vercel.json             → Vercel Python API config
+    requirements.txt        → Python dependencies for Vercel
+    package.json            → npm deploy scripts
+
+================================================================================
