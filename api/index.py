@@ -11,7 +11,7 @@ from fastapi import FastAPI, File, UploadFile, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 
-# Load .env locally (Vercel uses dashboard env vars)
+# Load .env locally (Render uses dashboard env vars)
 ROOT_DIR = Path(__file__).resolve().parent.parent
 DOTENV_PATH = ROOT_DIR / ".env"
 if DOTENV_PATH.exists():
@@ -51,7 +51,7 @@ def _gemini_models() -> tuple[str, ...]:
 
 _URL_PATTERN = re.compile(r"^https?://", re.IGNORECASE)
 _FETCH_USER_AGENT = (
-    "Mozilla/5.0 (compatible; EBI-Product-Bot/1.0; +https://ebi-project.vercel.app)"
+    "Mozilla/5.0 (compatible; EBI-Product-Bot/1.0; +https://ebi-project.onrender.com)"
 )
 
 OFF_CATEGORIES = {
@@ -90,7 +90,7 @@ def _run_gemini(image_bytes: bytes, prompt: str) -> str:
     if not api_key:
         raise HTTPException(
             status_code=503,
-            detail="GEMINI_API_KEY is not set. Add it in Vercel → Project → Settings → Environment Variables.",
+            detail="GEMINI_API_KEY is not set. Add it in Render Dashboard → Environment Variables.",
         )
 
     genai.configure(api_key=api_key)
@@ -126,7 +126,7 @@ def _run_gemini_text(prompt: str) -> str:
     if not api_key:
         raise HTTPException(
             status_code=503,
-            detail="GEMINI_API_KEY is not set. Add it in Vercel → Project → Settings → Environment Variables.",
+            detail="GEMINI_API_KEY is not set. Add it in Render Dashboard → Environment Variables.",
         )
 
     genai.configure(api_key=api_key)

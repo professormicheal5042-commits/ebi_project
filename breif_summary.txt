@@ -20,7 +20,7 @@ PURPOSE
     templates). The browser loads HTML files and JavaScript runs in the client.
   • Business data (products, alerts, profiles) is stored in a cloud database
     (Supabase), not in local files.
-  • A separate Python API (FastAPI) on Vercel handles image/OCR/AI tasks only.
+  • A separate Python API (FastAPI) on Render handles image/OCR/AI tasks only.
 
 
 ================================================================================
@@ -83,12 +83,12 @@ The system uses TWO backends that work together:
     • Anon key is public in the client; RLS prevents users accessing others' rows.
 
 
-  B) PYTHON API ON VERCEL (AI / OCR / barcode service)
+  B) PYTHON API ON RENDER (AI / OCR / barcode service)
   ─────────────────────────────────────────────────────
   • File: api/index.py
   • Framework: FastAPI
-  • Hosted: Vercel serverless Python (@vercel/python)
-  • Live base URL: https://ebi-project.vercel.app
+  • Hosted: Render Web Service
+  • Live base URL: https://ebi-project.onrender.com (or your Render URL)
 
   This API does NOT store products in its own database. It processes images and
   returns JSON; the browser then fills the form and the user saves to Supabase.
@@ -110,7 +110,7 @@ The system uses TWO backends that work together:
     • Optional: pyzbar — local barcode decode when available
 
   Environment
-    • GEMINI_API_KEY — set in Vercel dashboard (required for AI features)
+    • GEMINI_API_KEY — set in Render Dashboard (required for AI features)
     • Local dev: python -m uvicorn api.index:app --reload --port 8000
 
 
@@ -126,17 +126,16 @@ The system uses TWO backends that work together:
     • Deploy command: npm run deploy:hosting  (firebase deploy --only hosting)
 
   BACKEND API (Python)
-    • Vercel
-    • Config: vercel.json — routes all /api/* to api/index.py
-    • Deploy command: npm run deploy:api  (vercel --prod)
-    • Full deploy both: npm run deploy:all
+    • Render
+    • Config: render.yaml — Blueprint for Render deployment
+    • Deploy command: Deploys automatically on git push to connected repo
 
   DATABASE & AUTH
     • Supabase cloud (no self-hosted database server)
 
   GITHUB (version control + optional CI)
     • Code can be pushed to GitHub for backup and collaboration.
-    • Vercel and Firebase can connect to a GitHub repo for automatic deploys
+    • Render and Firebase can connect to a GitHub repo for automatic deploys
       on push (if configured in their dashboards).
 
   Typical terminal commands (from project folder):
@@ -145,9 +144,7 @@ The system uses TWO backends that work together:
     git commit -m "Describe your changes"
     git push origin main
 
-    npm run deploy:api        # deploy Python API to Vercel
     npm run deploy:hosting    # deploy static site to Firebase
-    npm run deploy:all        # deploy both
 
 
 ================================================================================
@@ -172,7 +169,7 @@ The system uses TWO backends that work together:
 ================================================================================
 
   1. User uploads image and crops the QR code in the browser.
-  2. Browser sends image (FormData) to Vercel: POST /api/scan-qr-product
+  2. Browser sends image (FormData) to Render API: POST /api/scan-qr-product
   3. Python decodes QR; if it is a URL, fetches the webpage and uses Gemini to
      extract product name, dates, category, barcode.
   4. JSON response returns to the browser; JavaScript fills the form fields.
@@ -186,7 +183,7 @@ The system uses TWO backends that work together:
 
   • Static frontend (HTML/CSS/JS) — fast, simple hosting on Firebase.
   • Supabase = real backend for users, products, and security (RLS).
-  • Python on Vercel = specialized AI/OCR microservice, not the main CRUD server.
+  • Python on Render = specialized AI/OCR microservice, not the main CRUD server.
   • AI (Gemini) reduces manual data entry from labels, barcodes, and QR product links.
   • Architecture is modular: UI, database, and AI API can be updated independently.
   • Suitable for small business / home inventory expiry management with multi-user login.
@@ -204,8 +201,8 @@ The system uses TWO backends that work together:
       index.py              → FastAPI OCR/barcode/QR service
     database_setup.sql      → Supabase schema + RLS policies
     firebase.json           → Firebase Hosting config
-    vercel.json             → Vercel Python API config
-    requirements.txt        → Python dependencies for Vercel
+    render.yaml             → Render Blueprint config
+    requirements.txt        → Python dependencies for Render
     package.json            → npm deploy scripts
 
 ================================================================================

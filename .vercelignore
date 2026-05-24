@@ -1,7 +1,0 @@
-public/
-firebase.json
-.firebaserc
-database_setup.sql
-*.md
-.env
-.env.example

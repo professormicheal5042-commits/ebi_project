@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: ebi-ocr-api
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn api.index:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.12
+      - key: GEMINI_API_KEY
+        sync: false

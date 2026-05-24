@@ -2,7 +2,7 @@
 export const API_BASE =
   (typeof window !== "undefined" && window.EBI_API_BASE) ||
   (typeof window !== "undefined" &&
-  (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+  (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.protocol === "file:")
     ? "http://localhost:8000"
     : "https://ebi-project.vercel.app");
 

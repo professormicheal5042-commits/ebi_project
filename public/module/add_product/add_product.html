@@ -517,14 +517,38 @@
       scanText.style.display = 'none';
       scanLoad.style.display = 'inline';
 
-      // Get cropped canvas → blob
-      cropperInstance.getCroppedCanvas({ maxWidth: 1200 }).toBlob(async (blob) => {
-        const qrOk = await sendToQrProductScan(blob);
-        if (!qrOk) await sendToOCR(blob);
-        btn.disabled = false;
-        scanText.style.display = 'inline';
-        scanLoad.style.display = 'none';
-      }, 'image/jpeg', 0.92);
+      const canvas = cropperInstance.getCroppedCanvas({ maxWidth: 1200 });
+      const ctx = canvas.getContext('2d');
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(imageData.data, imageData.width, imageData.height, {
+        inversionAttempts: "attemptBoth",
+      });
+
+      if (code && code.data) {
+        // jsQR successfully found a QR code!
+        const qrOk = await sendToEnrichQrPayload(code.data);
+        if (!qrOk) {
+          canvas.toBlob(async (blob) => {
+            await sendToOCR(blob);
+            btn.disabled = false;
+            scanText.style.display = 'inline';
+            scanLoad.style.display = 'none';
+          }, 'image/jpeg', 0.92);
+        } else {
+          btn.disabled = false;
+          scanText.style.display = 'inline';
+          scanLoad.style.display = 'none';
+        }
+      } else {
+        // Fallback to backend processing (Pyzbar/Gemini) if jsQR misses it
+        canvas.toBlob(async (blob) => {
+          const qrOk = await sendToQrProductScan(blob);
+          if (!qrOk) await sendToOCR(blob);
+          btn.disabled = false;
+          scanText.style.display = 'inline';
+          scanLoad.style.display = 'none';
+        }, 'image/jpeg', 0.92);
+      }
     }
 
     // ── LIVE CAMERA (Google-Style QR Live Scanner) ──────────────────────────
@@ -819,7 +843,7 @@
 
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const code = jsQR(imageData.data, imageData.width, imageData.height, {
-          inversionAttempts: "dontInvert",
+          inversionAttempts: "attemptBoth",
         });
 
         const overlayCtx = overlayCanvas.getContext('2d');
