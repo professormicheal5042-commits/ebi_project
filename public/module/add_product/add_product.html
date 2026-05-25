@@ -734,22 +734,46 @@
     }
 
     let html5QrcodeScanner = null;
+    let isScanning = false;
 
-    function startCameraScanner() {
+    async function startCameraScanner() {
       document.getElementById('reader').style.display = 'block';
       document.getElementById('btnStartCamera').style.display = 'none';
       document.getElementById('btnStopCam').style.display = 'inline-block';
       document.getElementById('btnCaptureLabel').style.display = 'none';
-      
-      html5QrcodeScanner = new Html5QrcodeScanner(
-        "reader",
-        { fps: 10, qrbox: {width: 250, height: 150}, aspectRatio: 1.0 },
-        /* verbose= */ false
-      );
-      html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+
+      const formats = [
+        Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.UPC_A, Html5QrcodeSupportedFormats.UPC_E,
+        Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39,
+        Html5QrcodeSupportedFormats.QR_CODE, Html5QrcodeSupportedFormats.DATA_MATRIX
+      ];
+
+      html5QrcodeScanner = new Html5Qrcode('reader', { formatsToSupport: formats, verbose: false });
+
+      try {
+        const cameras = await Html5Qrcode.getCameras();
+        if (!cameras || cameras.length === 0) {
+          alert('❌ No camera found on this device.');
+          stopCamera(); return;
+        }
+
+        const cam = cameras.find(c => /back|environment|rear/i.test(c.label)) || cameras[cameras.length - 1];
+
+        await html5QrcodeScanner.start(
+          { deviceId: { exact: cam.id } },
+          { fps: 15, qrbox: (w, h) => ({ width: Math.min(w * 0.85, 500), height: Math.min(h * 0.25, 100) }), aspectRatio: 1.5 },
+          onScanSuccess,
+          () => {} // ignore frame errors
+        );
+        isScanning = true;
+      } catch (err) {
+        alert('Camera error: ' + err.message);
+        stopCamera();
+      }
     }
 
-    async function onScanSuccess(decodedText, decodedResult) {
+    async function onScanSuccess(decodedText) {
       playBeep();
       stopCamera();
       
@@ -760,14 +784,11 @@
       document.getElementById('productForm').scrollIntoView({ behavior: 'smooth' });
     }
 
-    function onScanFailure(error) {
-      // Ignore failures
-    }
-
     function stopCamera() {
-      if (html5QrcodeScanner) {
-        html5QrcodeScanner.clear().catch(e => console.error("Failed to clear scanner", e));
+      if (html5QrcodeScanner && isScanning) {
+        html5QrcodeScanner.stop().then(() => { html5QrcodeScanner.clear(); }).catch(() => {});
       }
+      isScanning = false;
       document.getElementById('reader').style.display = 'none';
       document.getElementById('btnStartCamera').style.display = 'inline-block';
       document.getElementById('btnStartCamera').textContent = '📷 Start Scanner';
@@ -776,9 +797,8 @@
     }
 
     function captureLabelForOCR() {
-      // Html5QrcodeScanner doesn't natively support capturing a frame for OCR
-      // So we ask the user to use the Upload tab instead
-      alert("Please use the 'Upload & Crop' tab to capture an image for OCR.");
+      // Prompt user to use the Upload tab
+      alert("Please use the 'Upload & Crop' tab above to capture an image for OCR.");
     }
 
     // ── selectCategoryValue — used by fillProductFromScan ─────────────────
