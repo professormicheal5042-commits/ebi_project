@@ -631,6 +631,11 @@
       reader.readAsDataURL(file);
     }
 
+    const scanArea = document.createElement('div');
+    scanArea.id = 'fileScanArea';
+    scanArea.style.display = 'none';
+    document.body.appendChild(scanArea);
+
     async function scanCroppedImage() {
       if (!cropperInstance) return;
       const scanText = document.getElementById('cropScanText');
@@ -641,32 +646,40 @@
       scanLoad.style.display = 'inline';
 
       const canvas = cropperInstance.getCroppedCanvas({ maxWidth: 1200 });
-      const ctx = canvas.getContext('2d');
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const code = jsQR(imageData.data, imageData.width, imageData.height, {
-        inversionAttempts: "attemptBoth",
-      });
+      if (!canvas) {
+        btn.disabled = false;
+        scanText.style.display = 'inline';
+        scanLoad.style.display = 'none';
+        return;
+      }
 
-      if (code && code.data) {
-        // ── QR CODE FOUND — parse locally or enrich via API ──
-        playBeep();
-        await handleDecodedText(code.data);
+      canvas.toBlob(async (blob) => {
+        const file = new File([blob], 'crop.jpg', { type: 'image/jpeg' });
+        const formats = [
+          Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.UPC_A, Html5QrcodeSupportedFormats.UPC_E,
+          Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39,
+          Html5QrcodeSupportedFormats.QR_CODE, Html5QrcodeSupportedFormats.DATA_MATRIX
+        ];
+
+        try {
+          const fileScanner = new Html5Qrcode('fileScanArea', { formatsToSupport: formats, verbose: false });
+          const decodedText = await fileScanner.scanFile(file, false);
+          fileScanner.clear().catch(()=>{});
+          
+          playBeep();
+          await handleDecodedText(decodedText);
+          document.getElementById('productForm').scrollIntoView({ behavior: 'smooth' });
+        } catch (err) {
+          // NO BARCODE FOUND — treat as a product label image for OCR
+          await sendToOCR(blob);
+          document.getElementById('productForm').scrollIntoView({ behavior: 'smooth' });
+        }
 
         btn.disabled = false;
         scanText.style.display = 'inline';
         scanLoad.style.display = 'none';
-        document.getElementById('productForm').scrollIntoView({ behavior: 'smooth' });
-      } else {
-        // ── NO QR CODE — treat as a product label image ──
-        canvas.toBlob(async (blob) => {
-          await sendToOCR(blob);
-
-          btn.disabled = false;
-          scanText.style.display = 'inline';
-          scanLoad.style.display = 'none';
-          document.getElementById('productForm').scrollIntoView({ behavior: 'smooth' });
-        }, 'image/jpeg', 0.92);
-      }
+      }, 'image/jpeg', 0.95);
     }
 
     // ── LIVE CAMERA (Google-Style QR Live Scanner) ──────────────────────────
