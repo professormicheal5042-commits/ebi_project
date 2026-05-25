@@ -732,16 +732,26 @@
       btn.innerHTML = '<span class="spinner"></span> Scanning...';
       btn.disabled = true;
 
-      // Get the cropped canvas and convert to a Blob/File
-      const canvas = cropper.getCroppedCanvas({ maxWidth: 1200, maxHeight: 600 });
-      if (!canvas) {
+      // Get original cropped canvas — NO maxHeight so we keep full resolution
+      const rawCanvas = cropper.getCroppedCanvas();
+      if (!rawCanvas) {
         showAlert('error', '❌ Could not read cropped image.');
         btn.textContent = '✂️ Crop & Scan Barcode';
         btn.disabled = false;
         return;
       }
 
-      canvas.toBlob(async (blob) => {
+      // ── UPSCALE 3× to massively improve barcode detection accuracy ──────
+      const SCALE = 3;
+      const upCanvas = document.createElement('canvas');
+      upCanvas.width  = rawCanvas.width  * SCALE;
+      upCanvas.height = rawCanvas.height * SCALE;
+      const ctx = upCanvas.getContext('2d');
+      // Boost contrast slightly before scanning
+      ctx.filter = 'contrast(1.4) brightness(1.05)';
+      ctx.drawImage(rawCanvas, 0, 0, upCanvas.width, upCanvas.height);
+
+      upCanvas.toBlob(async (blob) => {
         const file = new File([blob], 'crop.jpg', { type: 'image/jpeg' });
 
         const formats = [
@@ -758,13 +768,30 @@
           Html5QrcodeSupportedFormats.DATA_MATRIX,
         ];
 
+        let detected = false;
+
+        // ── Attempt 1: scan with all formats ────────────────────────────
         try {
-          const fileScanner = new Html5Qrcode('fileScanArea', { formatsToSupport: formats, verbose: false });
-          const result = await fileScanner.scanFile(file, /* showImage */ false);
-          fileScanner.clear();
+          const s1 = new Html5Qrcode('fileScanArea', { formatsToSupport: formats, verbose: false });
+          const result = await s1.scanFile(file, false);
+          await s1.clear().catch(() => {});
           onDetected(result);
-        } catch (err) {
-          showAlert('error', '❌ No barcode detected in the cropped area. Try cropping tighter around just the barcode lines.');
+          detected = true;
+        } catch (_) { /* try next */ }
+
+        // ── Attempt 2: scan with NO format restriction (catches unusual codes) ──
+        if (!detected) {
+          try {
+            const s2 = new Html5Qrcode('fileScanArea', { verbose: false });
+            const result = await s2.scanFile(file, false);
+            await s2.clear().catch(() => {});
+            onDetected(result);
+            detected = true;
+          } catch (_) { /* all attempts failed */ }
+        }
+
+        if (!detected) {
+          showAlert('error', '❌ Barcode not found. Try: better lighting, hold steady, or crop tighter to just the barcode stripes.');
         }
 
         btn.textContent = '✂️ Crop & Scan Barcode';

@@ -669,7 +669,16 @@
         return;
       }
 
-      canvas.toBlob(async (blob) => {
+      // ── UPSCALE 3× to massively improve barcode detection accuracy ──────
+      const SCALE = 3;
+      const upCanvas = document.createElement('canvas');
+      upCanvas.width  = canvas.width  * SCALE;
+      upCanvas.height = canvas.height * SCALE;
+      const upCtx = upCanvas.getContext('2d');
+      upCtx.filter = 'contrast(1.4) brightness(1.05)';
+      upCtx.drawImage(canvas, 0, 0, upCanvas.width, upCanvas.height);
+
+      upCanvas.toBlob(async (blob) => {
         const file = new File([blob], 'crop.jpg', { type: 'image/jpeg' });
         const formats = [
           Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8,
@@ -678,16 +687,34 @@
           Html5QrcodeSupportedFormats.QR_CODE, Html5QrcodeSupportedFormats.DATA_MATRIX
         ];
 
-        try {
-          const fileScanner = new Html5Qrcode('fileScanArea', { formatsToSupport: formats, verbose: false });
-          const decodedText = await fileScanner.scanFile(file, false);
-          fileScanner.clear().catch(() => { });
+        let detected = false;
 
+        // Attempt 1: scan with explicit formats
+        try {
+          const s1 = new Html5Qrcode('fileScanArea', { formatsToSupport: formats, verbose: false });
+          const decodedText = await s1.scanFile(file, false);
+          await s1.clear().catch(() => {});
+          detected = true;
           playBeep();
           await handleDecodedText(decodedText);
           document.getElementById('productForm').scrollIntoView({ behavior: 'smooth' });
-        } catch (err) {
-          // NO BARCODE FOUND — treat as a product label image for OCR
+        } catch (_) { /* try next */ }
+
+        // Attempt 2: no format restriction (catches unusual codes)
+        if (!detected) {
+          try {
+            const s2 = new Html5Qrcode('fileScanArea', { verbose: false });
+            const decodedText = await s2.scanFile(file, false);
+            await s2.clear().catch(() => {});
+            detected = true;
+            playBeep();
+            await handleDecodedText(decodedText);
+            document.getElementById('productForm').scrollIntoView({ behavior: 'smooth' });
+          } catch (_) { /* barcode not found, fall back to OCR */ }
+        }
+
+        // Attempt 3: treat as label image — send to OCR
+        if (!detected) {
           await sendToOCR(blob);
           document.getElementById('productForm').scrollIntoView({ behavior: 'smooth' });
         }
