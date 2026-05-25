@@ -525,25 +525,20 @@
       });
 
       if (code && code.data) {
-        // jsQR successfully found a QR code!
-        const qrOk = await sendToEnrichQrPayload(code.data);
-        if (!qrOk) {
-          canvas.toBlob(async (blob) => {
-            await sendToOCR(blob);
-            btn.disabled = false;
-            scanText.style.display = 'inline';
-            scanLoad.style.display = 'none';
-          }, 'image/jpeg', 0.92);
-        } else {
-          btn.disabled = false;
-          scanText.style.display = 'inline';
-          scanLoad.style.display = 'none';
-        }
+        // jsQR successfully found a QR code! Just like a normal scanner, display immediately
+        const notesEl = document.getElementById('prodNotes');
+        notesEl.value = (notesEl.value ? notesEl.value + '\n' : '') + "Scanned: " + code.data;
+        
+        document.getElementById('successBox').textContent = '✅ QR Code scanned successfully!';
+        document.getElementById('successBox').classList.add('show');
+
+        btn.disabled = false;
+        scanText.style.display = 'inline';
+        scanLoad.style.display = 'none';
       } else {
-        // Fallback to backend processing (Pyzbar/Gemini) if jsQR misses it
+        // Fallback to backend processing (OCR) if no QR is found
         canvas.toBlob(async (blob) => {
-          const qrOk = await sendToQrProductScan(blob);
-          if (!qrOk) await sendToOCR(blob);
+          await sendToOCR(blob);
           btn.disabled = false;
           scanText.style.display = 'inline';
           scanLoad.style.display = 'none';
@@ -889,17 +884,17 @@
             qrConfirmCount = 0;
             lastQrData = null;
 
-            // BUG FIX: send the already-decoded text directly to the API.
-            // The old code re-uploaded the full video frame as an image and
-            // asked the server to re-decode it — which often failed.
-            (async () => {
-              const ok = await sendToEnrichQrPayload(decodedText);
-              if (ok) {
-                document.getElementById('scanStatusTag').textContent = '✅ Done';
-              } else {
-                document.getElementById('scanStatusTag').textContent = '❌ Invalid Result';
-              }
-            })();
+            // Just like a normal scanner: output immediately
+            const decodedText = code.data;
+            const notesEl = document.getElementById('prodNotes');
+            notesEl.value = (notesEl.value ? notesEl.value + '\n' : '') + "Scanned: " + decodedText;
+
+            document.getElementById('scanStatusTag').textContent = '✅ Done';
+            document.getElementById('btnRescan').style.display = 'inline';
+            
+            const successBox = document.getElementById('successBox');
+            successBox.textContent = '✅ QR Code scanned successfully!';
+            successBox.classList.add('show');
 
             return;
           }
