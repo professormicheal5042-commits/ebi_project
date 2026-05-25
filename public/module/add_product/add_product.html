@@ -524,25 +524,31 @@
       });
 
       if (code && code.data) {
-        // jsQR successfully found a QR code! Just like a normal scanner, display immediately
+        // ── QR CODE FOUND — act like a real scanner ──
+        // Send the decoded TEXT to the enrichment API (visits URLs, looks up barcodes)
+        playBeep();
+        const decodedText = code.data;
         const notesEl = document.getElementById('prodNotes');
-        notesEl.value = (notesEl.value ? notesEl.value + '\n' : '') + "Scanned: " + code.data;
-      }
+        notesEl.value = (notesEl.value ? notesEl.value + '\n' : '') + "Scanned: " + decodedText;
 
-      // ALWAYS send the image to Gemini OCR to detect product name, mfg, expiry
-      canvas.toBlob(async (blob) => {
-        await sendToOCR(blob);
-        
+        await sendToEnrichQrPayload(decodedText);
+
         btn.disabled = false;
         scanText.style.display = 'inline';
         scanLoad.style.display = 'none';
-        
-        if (code && code.data && (code.data.toLowerCase().startsWith('http://') || code.data.toLowerCase().startsWith('https://'))) {
-          window.open(code.data, '_blank');
-        }
-        
         document.getElementById('productForm').scrollIntoView({ behavior: 'smooth' });
-      }, 'image/jpeg', 0.92);
+      } else {
+        // ── NO QR CODE — treat as a product label image ──
+        // Send the image to Gemini Vision to read text off the packaging
+        canvas.toBlob(async (blob) => {
+          await sendToOCR(blob);
+
+          btn.disabled = false;
+          scanText.style.display = 'inline';
+          scanLoad.style.display = 'none';
+          document.getElementById('productForm').scrollIntoView({ behavior: 'smooth' });
+        }, 'image/jpeg', 0.92);
+      }
     }
 
     // ── LIVE CAMERA (Google-Style QR Live Scanner) ──────────────────────────
@@ -890,17 +896,11 @@
             const notesEl = document.getElementById('prodNotes');
             notesEl.value = (notesEl.value ? notesEl.value + '\n' : '') + "Scanned: " + decodedText;
 
-            // ALWAYS send the frame to Gemini OCR to extract fields!
-            canvas.toBlob(async (blob) => {
-               await sendToOCR(blob);
-               
-               if (decodedText.toLowerCase().startsWith('http://') || decodedText.toLowerCase().startsWith('https://')) {
-                 window.open(decodedText, '_blank');
-               }
+            // Send the decoded TEXT to the enrichment API (visits URLs, looks up barcodes)
+            await sendToEnrichQrPayload(decodedText);
 
-               stopCamera();
-               document.getElementById('productForm').scrollIntoView({ behavior: 'smooth' });
-            }, 'image/jpeg', 0.92);
+            stopCamera();
+            document.getElementById('productForm').scrollIntoView({ behavior: 'smooth' });
 
             return;
           }
