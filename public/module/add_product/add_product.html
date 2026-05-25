@@ -891,7 +891,6 @@
             lastQrData = null;
 
             // Just like a normal scanner: output immediately
-            const decodedText = code.data;
             const notesEl = document.getElementById('prodNotes');
             notesEl.value = (notesEl.value ? notesEl.value + '\n' : '') + "Scanned: " + decodedText;
 
