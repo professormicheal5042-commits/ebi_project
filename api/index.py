@@ -297,6 +297,47 @@ def _lookup_off_product(code: str) -> dict:
     }
 
 
+def _parse_gs1(payload: str) -> dict:
+    """Parse GS1 Application Identifiers from barcode data.
+    Handles formats like: (01)89080009...(17)280430(10)T72601(21)OLAPLEZA-5
+    """
+    result = {}
+    matches = re.findall(r'\((\d{2,4})\)([^(]*)', payload)
+    if not matches:
+        return result
+
+    for ai, value in matches:
+        value = value.strip()
+        if ai == '01':
+            result['gtin'] = re.sub(r'\D', '', value)
+        elif ai == '10':
+            result['batch'] = value
+        elif ai == '11':
+            result['mfg_date'] = _gs1_date(value)
+        elif ai == '15':
+            result['expiry'] = _gs1_date(value)
+        elif ai == '17':
+            result['expiry'] = _gs1_date(value)
+        elif ai == '21':
+            result['serial'] = value
+    return result
+
+
+def _gs1_date(raw: str) -> str:
+    """Convert GS1 YYMMDD to YYYY-MM-DD."""
+    raw = re.sub(r'\D', '', raw.strip())
+    if len(raw) < 6:
+        return "Not found"
+    yy = int(raw[:2])
+    mm = raw[2:4]
+    dd = raw[4:6]
+    year = 2000 + yy if yy < 50 else 1900 + yy
+    if dd == '00':
+        import calendar
+        dd = str(calendar.monthrange(year, int(mm))[1]).zfill(2)
+    return f"{year}-{mm}-{dd}"
+
+
 def _enrich_payload(payload: str) -> dict:
     if _URL_PATTERN.match(payload):
         page_text = _fetch_url_text(payload)
@@ -323,6 +364,69 @@ def _enrich_payload(payload: str) -> dict:
             "enrichment": "web_scrape",
         }
 
+    # ── Try GS1 parsing (pharmaceutical / industrial QR codes) ──
+    gs1 = _parse_gs1(payload)
+    if gs1:
+        gtin = gs1.get('gtin', '')
+        expiry = gs1.get('expiry', 'Not found')
+        mfg_date = gs1.get('mfg_date', 'Not found')
+        batch = gs1.get('batch', '')
+        serial = gs1.get('serial', '')
+
+        # Look up product name from GTIN on OpenFoodFacts
+        name = 'Unknown'
+        category = 'Other'
+        brand = None
+        if gtin and len(gtin) >= 8:
+            off = _lookup_off_product(gtin)
+            if off.get('found'):
+                name = off.get('name') or 'Unknown'
+                category = off.get('category') or 'Other'
+                brand = off.get('brand')
+
+        # If OFF didn't find it, ask Gemini to identify the product
+        if name == 'Unknown':
+            try:
+                prompt = f"""Identify this product from its scanned barcode/QR data.
+Raw scanned data: "{payload}"
+GTIN: {gtin or 'unknown'}
+Serial: {serial or 'unknown'}
+Batch: {batch or 'unknown'}
+
+Respond ONLY with valid JSON — no markdown:
+{{
+  "name": "the product name (your best guess from the serial number, GTIN, or any clue in the data)",
+  "category": "one of: Food, Medicine, Cosmetics, Household, Other",
+  "brand": "brand/manufacturer name or null"
+}}
+
+Rules:
+- The serial field often contains the product name (e.g. 'OLAPLEZA-5 MD' means Olapleza 5mg Medicine)
+- If the GTIN starts with 890 it is likely an Indian pharmaceutical product
+- Make your best guess — never return 'Unknown' if there are any clues"""
+                gemini_result = _parse_gemini_json(_run_gemini_text(prompt))
+                if gemini_result.get('name') and gemini_result['name'] != 'Unknown':
+                    name = gemini_result['name']
+                if gemini_result.get('category') and gemini_result['category'] != 'Other':
+                    category = gemini_result['category']
+                if gemini_result.get('brand'):
+                    brand = gemini_result['brand']
+            except Exception:
+                pass
+
+        return {
+            'name': name,
+            'category': category,
+            'mfg_date': mfg_date,
+            'expiry': expiry,
+            'barcode': gtin or payload,
+            'brand': brand,
+            'raw_text': payload,
+            'payload': payload,
+            'enrichment': 'gs1',
+        }
+
+    # ── Plain numeric barcode → OpenFoodFacts lookup ──
     clean = re.sub(r"\s+", "", payload)
     off = _lookup_off_product(clean) if clean.isdigit() and len(clean) >= 8 else {"found": False}
     if off.get("found"):
@@ -337,6 +441,35 @@ def _enrich_payload(payload: str) -> dict:
             "payload": payload,
             "enrichment": "openfoodfacts",
         }
+
+    # ── Fallback: send any non-trivial text to Gemini to parse ──
+    if len(payload.strip()) > 5:
+        try:
+            prompt = f"""Extract product details from this scanned barcode/QR data:
+"{payload}"
+
+Respond ONLY with valid JSON — no markdown:
+{{
+  "name": "product name (best guess from the data)",
+  "category": "one of: Food, Medicine, Cosmetics, Household, Other",
+  "mfg_date": "manufacturing date YYYY-MM-DD or 'Not found'",
+  "expiry": "expiry date YYYY-MM-DD or 'Not found'",
+  "brand": "brand name or null"
+}}"""
+            gemini_result = _parse_gemini_json(_run_gemini_text(prompt))
+            return {
+                'name': gemini_result.get('name', 'Unknown'),
+                'category': gemini_result.get('category', 'Other'),
+                'mfg_date': gemini_result.get('mfg_date', 'Not found'),
+                'expiry': gemini_result.get('expiry', 'Not found'),
+                'barcode': clean or payload,
+                'brand': gemini_result.get('brand'),
+                'raw_text': payload,
+                'payload': payload,
+                'enrichment': 'gemini_text',
+            }
+        except Exception:
+            pass
 
     return {
         "name": "Unknown",
