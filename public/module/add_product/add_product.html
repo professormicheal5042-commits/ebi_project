@@ -9,9 +9,8 @@
     href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap"
     rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
   <link rel="stylesheet" href="./add_product.css" />
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 </head>
 
 <body>
@@ -28,8 +27,8 @@
       <a class="sb-link" href="../dashboard/dashboard.html"><span class="sb-icon">📊</span> Dashboard</a>
       <a class="sb-link" href="../inventory/inventory.html"><span class="sb-icon">📦</span> Inventory</a>
       <a class="sb-link active" href="add_product.html"><span class="sb-icon">➕</span> Add Product</a>
-      <a class="sb-link" href="../alerts/alerts.html"><span class="sb-icon">🔔</span> Alerts <span
-          class="sb-badge" id="alertBadge" style="display:none">0</span></a>
+      <a class="sb-link" href="../alerts/alerts.html"><span class="sb-icon">🔔</span> Alerts <span class="sb-badge"
+          id="alertBadge" style="display:none">0</span></a>
       <a class="sb-link" href="../reports/reports.html"><span class="sb-icon">📈</span> Reports</a>
       <a class="sb-link" href="../admin/admin.html"><span class="sb-icon">⚙️</span> Admin Catalog</a>
       <a class="sb-link" href="../profile/profile.html"><span class="sb-icon">👤</span> Profile</a>
@@ -89,16 +88,23 @@
           <div class="ocr-panel" id="panelCamera">
             <div class="ocr-icon">📷</div>
             <div class="ocr-title">Use Live Camera</div>
-            <div class="ocr-desc" id="cameraDesc">Point your camera at a drug QR code to auto-detect, or click "Analyze Label" to extract details from the packaging.</div>
+            <div class="ocr-desc" id="cameraDesc">Point your camera at a drug QR code to auto-detect, or click "Analyze
+              Label" to extract details from the packaging.</div>
             <div style="margin-bottom: 12px; display: none;" id="scanStatusContainer">
               <span class="scan-status-tag" id="scanStatusTag">🟢 Scanning...</span>
             </div>
-            <div id="reader" style="width: 100%; max-width: 500px; margin: 0 auto; display: none; border-radius: 8px; overflow: hidden;"></div>
+            <div id="reader"
+              style="width: 100%; max-width: 500px; margin: 0 auto; display: none; border-radius: 8px; overflow: hidden;">
+            </div>
             <div class="ocr-actions">
-              <button type="button" class="btn-ocr" id="btnStartCamera" onclick="startCameraScanner()">📷 Start Scanner</button>
-              <button type="button" class="btn-ocr" id="btnCaptureLabel" onclick="captureLabelForOCR()" style="display:none">📄 Analyze Label</button>
-              <button type="button" class="btn-ocr" id="btnRescan" onclick="startCameraScanner()" style="display:none">🔄 Rescan</button>
-              <button type="button" class="btn-ocr-red" id="btnStopCam" onclick="stopCamera()" style="display:none">⏹ Stop Camera</button>
+              <button type="button" class="btn-ocr" id="btnStartCamera" onclick="startCameraScanner()">📷 Start
+                Scanner</button>
+              <button type="button" class="btn-ocr" id="btnCaptureLabel" onclick="captureLabelForOCR()"
+                style="display:none">📄 Analyze Label</button>
+              <button type="button" class="btn-ocr" id="btnRescan" onclick="startCameraScanner()"
+                style="display:none">🔄 Rescan</button>
+              <button type="button" class="btn-ocr-red" id="btnStopCam" onclick="stopCamera()" style="display:none">⏹
+                Stop Camera</button>
             </div>
           </div>
 
@@ -246,7 +252,7 @@
     function parseGS1Date(raw) {
       const digits = raw.replace(/\D/g, '');
       if (digits.length < 6) return null;
-      
+
       let year, mm, dd;
       if (digits.length === 8 && (digits.startsWith('20') || digits.startsWith('19'))) {
         // Non-standard YYYYMMDD
@@ -260,7 +266,7 @@
         dd = digits.substring(4, 6);
         year = yy < 50 ? 2000 + yy : 1900 + yy;
       }
-      
+
       if (dd === '00') {
         dd = String(new Date(year, parseInt(mm), 0).getDate()).padStart(2, '0');
       }
@@ -297,7 +303,7 @@
       // Auto-detect Category from serial text
       const serial = (gs1.serial || '').toLowerCase();
       if (serial.includes('md') || serial.includes('tab') || serial.includes('cap') ||
-          serial.includes('mg') || serial.includes('inj') || serial.includes('syr')) {
+        serial.includes('mg') || serial.includes('inj') || serial.includes('syr')) {
         selectCategoryValue('Medicine');
         filled.push('Category');
       }
@@ -324,7 +330,7 @@
       const successBox = document.getElementById('successBox');
       errorBox.classList.remove('show');
       successBox.classList.remove('show');
-      
+
       // 1. Query Global Catalog
       if (window.supabaseClient) {
         const { data: catalogItem, error } = await window.supabaseClient
@@ -332,22 +338,22 @@
           .select('*')
           .eq('barcode', decodedText)
           .single();
-          
+
         if (catalogItem) {
           // Found in global catalog!
           document.getElementById('prodName').value = catalogItem.name;
           if (catalogItem.category) selectCategoryValue(catalogItem.category);
           if (catalogItem.mfg_date) document.getElementById('prodMfgDate').value = catalogItem.mfg_date;
           if (catalogItem.expiry_date) document.getElementById('prodExpiryDate').value = catalogItem.expiry_date;
-          
+
           successBox.textContent = `✅ Found in Global Catalog: ${catalogItem.name}. Generating AI summary...`;
           successBox.classList.add('show');
-          
+
           // Generate AI Summary for notes
           const formData = new FormData();
           formData.append('name', catalogItem.name);
           formData.append('category', catalogItem.category || 'Other');
-          
+
           try {
             // Import GENERATE_SUMMARY_API dynamically or use global
             const api_url = window.GENERATE_SUMMARY_API_URL || 'https://ebi-project-yr1i.onrender.com/api/generate-summary';
@@ -359,7 +365,7 @@
           } catch (e) {
             console.error('Summary error', e);
           }
-          
+
           return true;
         }
       }
@@ -666,8 +672,8 @@
         try {
           const fileScanner = new Html5Qrcode('fileScanArea', { formatsToSupport: formats, verbose: false });
           const decodedText = await fileScanner.scanFile(file, false);
-          fileScanner.clear().catch(()=>{});
-          
+          fileScanner.clear().catch(() => { });
+
           playBeep();
           await handleDecodedText(decodedText);
           document.getElementById('productForm').scrollIntoView({ behavior: 'smooth' });
@@ -683,15 +689,7 @@
       }, 'image/jpeg', 0.95);
     }
 
-    // ── LIVE CAMERA (Google-Style QR Live Scanner) ──────────────────────────
-    let cameraStream = null;
-    let videoTrack = null;
-    let currentDeviceId = null;
-    let isScanning = false;
-    // Confirmation counter: QR must be detected for this many consecutive frames before triggering
-    const QR_CONFIRM_FRAMES = 3;
-    let qrConfirmCount = 0;
-    let lastQrData = null;
+    // ── OLD CAMERA VARS REMOVED ──
 
     // ── Send already-decoded QR text directly to API (no re-decoding needed) ──
     async function sendToEnrichQrPayload(decodedText) {
@@ -778,7 +776,7 @@
           { deviceId: { exact: cam.id } },
           { fps: 15, qrbox: (w, h) => ({ width: Math.min(w * 0.85, 500), height: Math.min(h * 0.25, 100) }), aspectRatio: 1.5 },
           onScanSuccess,
-          () => {} // ignore frame errors
+          () => { } // ignore frame errors
         );
         isScanning = true;
       } catch (err) {
@@ -790,9 +788,9 @@
     async function onScanSuccess(decodedText) {
       playBeep();
       stopCamera();
-      
+
       document.getElementById('btnRescan').style.display = 'inline-block';
-      
+
       // Handle the decoded barcode
       await handleDecodedText(decodedText);
       document.getElementById('productForm').scrollIntoView({ behavior: 'smooth' });
@@ -800,7 +798,7 @@
 
     function stopCamera() {
       if (html5QrcodeScanner && isScanning) {
-        html5QrcodeScanner.stop().then(() => { html5QrcodeScanner.clear(); }).catch(() => {});
+        html5QrcodeScanner.stop().then(() => { html5QrcodeScanner.clear(); }).catch(() => { });
       }
       isScanning = false;
       document.getElementById('reader').style.display = 'none';
