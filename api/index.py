@@ -564,7 +564,7 @@ Analyze this image and extract the following information.
 Respond ONLY with a valid JSON object — no markdown, no explanation, just the JSON.
 
 {
-  "name": "Extract the primary product name, brand name, or the largest text on the label. Make your absolute best guess. Never return 'Unknown' if there is any readable text.",
+  "name": "Extract the primary product name, brand name, or the largest text on the label. Make your absolute best guess. Never return 'Unknown' if there is any readable text. If the text is just a barcode or GS1 string, extract the name from it.",
   "category": "one of: Food, Medicine, Cosmetics, Household, Other",
   "mfg_date": "manufacturing/production date in YYYY-MM-DD format, or 'Not found' if completely absent.",
   "expiry": "expiry/best-before/use-by date in YYYY-MM-DD format, or 'Not found' if completely absent.",
@@ -572,7 +572,8 @@ Respond ONLY with a valid JSON object — no markdown, no explanation, just the 
 }
 
 Rules:
-- You MUST extract a product name. Pick the most prominent text if unsure.
+- You MUST extract a product name. Pick the most prominent text if unsure. NEVER output 'QR Code' or 'Barcode' as the product name.
+- If you see a GS1 barcode string like (01)890...(17)20280430...(21)OLAPLEZA-5, the (21) part is the product name, (17) is expiry (YYMMDD), and (11) is mfg date. Extract these correctly!
 - For dates like '12/2027' use the last day of that month: '2027-12-31'
 - For dates like '15/06/2027' use '2027-06-15'
 - Look for labels like: EXP, BEST BEFORE, USE BY, BBE, MFG, MFD, MANUFACTURED, DOM, PROD DATE
