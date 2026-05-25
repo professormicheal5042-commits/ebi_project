@@ -569,7 +569,9 @@
 
   <script type="module">
     import { supabase } from '../../shared/js/supabase.js';
+    import { BARCODE_SCAN_API } from '../../shared/js/config.js';
     window.supabaseClient = supabase;
+    window.BARCODE_SCAN_API_URL = BARCODE_SCAN_API;
   </script>
 
   <script>
@@ -744,7 +746,7 @@
       // ── UPSCALE 3× to massively improve barcode detection accuracy ──────
       const SCALE = 3;
       const upCanvas = document.createElement('canvas');
-      upCanvas.width  = rawCanvas.width  * SCALE;
+      upCanvas.width = rawCanvas.width * SCALE;
       upCanvas.height = rawCanvas.height * SCALE;
       const ctx = upCanvas.getContext('2d');
       // Boost contrast slightly before scanning
@@ -774,7 +776,7 @@
         try {
           const s1 = new Html5Qrcode('fileScanArea', { formatsToSupport: formats, verbose: false });
           const result = await s1.scanFile(file, false);
-          await s1.clear().catch(() => {});
+          await s1.clear().catch(() => { });
           onDetected(result);
           detected = true;
         } catch (_) { /* try next */ }
@@ -784,10 +786,30 @@
           try {
             const s2 = new Html5Qrcode('fileScanArea', { verbose: false });
             const result = await s2.scanFile(file, false);
-            await s2.clear().catch(() => {});
+            await s2.clear().catch(() => { });
             onDetected(result);
             detected = true;
           } catch (_) { /* all attempts failed */ }
+        }
+
+        // ── Attempt 3: send to Python backend barcode scan API ──────────────────
+        if (!detected) {
+          try {
+            const apiUrl = window.BARCODE_SCAN_API_URL || 'https://ebi-project-yr1i.onrender.com/api/scan-barcode';
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const res = await fetch(apiUrl, { method: 'POST', body: formData });
+            if (res.ok) {
+              const resData = await res.json();
+              if (resData && resData.barcode && resData.barcode !== 'Not found' && resData.barcode !== '') {
+                onDetected(resData.barcode);
+                detected = true;
+              }
+            }
+          } catch (err) {
+            console.error('Python barcode scan error:', err);
+          }
         }
 
         if (!detected) {

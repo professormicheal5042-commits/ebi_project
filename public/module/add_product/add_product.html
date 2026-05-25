@@ -710,10 +710,32 @@
             playBeep();
             await handleDecodedText(decodedText);
             document.getElementById('productForm').scrollIntoView({ behavior: 'smooth' });
-          } catch (_) { /* barcode not found, fall back to OCR */ }
+          } catch (_) { /* barcode not found, try Python API next */ }
         }
 
-        // Attempt 3: treat as label image — send to OCR
+        // Attempt 3: send to Python backend barcode scan API
+        if (!detected) {
+          try {
+            const apiUrl = BARCODE_SCAN_API();
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const res = await fetch(apiUrl, { method: 'POST', body: formData });
+            if (res.ok) {
+              const resData = await res.json();
+              if (resData && resData.barcode && resData.barcode !== 'Not found' && resData.barcode !== '') {
+                detected = true;
+                playBeep();
+                await handleDecodedText(resData.barcode);
+                document.getElementById('productForm').scrollIntoView({ behavior: 'smooth' });
+              }
+            }
+          } catch (err) {
+            console.error('Python barcode scan error:', err);
+          }
+        }
+
+        // Attempt 4: treat as label image — send to OCR
         if (!detected) {
           await sendToOCR(blob);
           document.getElementById('productForm').scrollIntoView({ behavior: 'smooth' });

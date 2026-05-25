@@ -256,7 +256,8 @@ Respond ONLY with valid JSON — no markdown.
 
 Rules:
 - For QR codes, return the full URL if present (https://...)
-- Return digits/letters only for linear barcodes
+- Return digits/letters only for linear barcodes.
+- IMPORTANT: If the barcode stripes/lines themselves are blurry, skewed, low resolution, or hard to decode, look at the human-readable numbers/digits printed directly below or around the barcode stripes and return those numbers as the barcode value!
 - If multiple codes, return the clearest one"""
 
     data = _parse_gemini_json(_run_gemini(image_bytes, prompt))
