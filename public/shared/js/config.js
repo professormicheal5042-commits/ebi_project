@@ -4,7 +4,7 @@ export const API_BASE =
   (typeof window !== "undefined" &&
   (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.protocol === "file:")
     ? "http://localhost:8000"
-    : "https://ebi-project.onrender.com");
+    : "https://ebi-project-yr1i.onrender.com");
 
 export const OCR_API = `${API_BASE}/api/extract-expiry`;
 export const BARCODE_SCAN_API = `${API_BASE}/api/scan-barcode`;
