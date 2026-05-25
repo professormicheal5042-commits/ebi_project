@@ -529,12 +529,18 @@
         const notesEl = document.getElementById('prodNotes');
         notesEl.value = (notesEl.value ? notesEl.value + '\n' : '') + "Scanned: " + code.data;
         
+        if (code.data.toLowerCase().startsWith('http://') || code.data.toLowerCase().startsWith('https://')) {
+          window.open(code.data, '_blank');
+        }
+
         document.getElementById('successBox').textContent = '✅ QR Code scanned successfully!';
         document.getElementById('successBox').classList.add('show');
 
         btn.disabled = false;
         scanText.style.display = 'inline';
         scanLoad.style.display = 'none';
+        
+        document.getElementById('productForm').scrollIntoView({ behavior: 'smooth' });
       } else {
         // Fallback to backend processing (OCR) if no QR is found
         canvas.toBlob(async (blob) => {
@@ -889,12 +895,17 @@
             const notesEl = document.getElementById('prodNotes');
             notesEl.value = (notesEl.value ? notesEl.value + '\n' : '') + "Scanned: " + decodedText;
 
-            document.getElementById('scanStatusTag').textContent = '✅ Done';
-            document.getElementById('btnRescan').style.display = 'inline';
+            if (decodedText.toLowerCase().startsWith('http://') || decodedText.toLowerCase().startsWith('https://')) {
+              window.open(decodedText, '_blank');
+            }
+
+            stopCamera();
             
             const successBox = document.getElementById('successBox');
             successBox.textContent = '✅ QR Code scanned successfully!';
             successBox.classList.add('show');
+            
+            document.getElementById('productForm').scrollIntoView({ behavior: 'smooth' });
 
             return;
           }
