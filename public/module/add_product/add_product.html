@@ -324,8 +324,11 @@
       return true;
     }
 
+    let scannedBarcode = null;
+
     // ── Handle ANY decoded QR/barcode text — Global Catalog first, then GS1, then API fallback ──
     async function handleDecodedText(decodedText) {
+      scannedBarcode = decodedText;
       const errorBox = document.getElementById('errorBox');
       const successBox = document.getElementById('successBox');
       errorBox.classList.remove('show');
@@ -430,7 +433,7 @@
           expiry_date: expiry,
           mfg_date: mfg || null,
           notes: notes || null,
-          barcode: null,
+          barcode: scannedBarcode,
         };
 
         if (!window.supabaseClient) {
@@ -498,13 +501,19 @@
         filled.push('Category');
       }
 
-      if (data.mfg_date && data.mfg_date !== 'Not found') {
-        document.getElementById('prodMfgDate').value = data.mfg_date;
+      // ── MANUFACTURING DATE ───────────────────────────────────────────
+      if ((data.mfg_date && data.mfg_date !== 'Not found') ||
+          (data.manufacturing_date && data.manufacturing_date !== 'Not found')) {
+        const mfg = data.mfg_date || data.manufacturing_date;
+        document.getElementById('prodMfgDate').value = mfg;
         filled.push('Mfg Date');
       }
 
-      if (data.expiry && data.expiry !== 'Not found') {
-        document.getElementById('prodExpiryDate').value = data.expiry;
+      // ── EXPIRY DATE ───────────────────────────────────────────────────
+      if ((data.expiry && data.expiry !== 'Not found') ||
+          (data.expiry_date && data.expiry_date !== 'Not found')) {
+        const exp = data.expiry || data.expiry_date;
+        document.getElementById('prodExpiryDate').value = exp;
         filled.push('Expiry Date');
       }
 

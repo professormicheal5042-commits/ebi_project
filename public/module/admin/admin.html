@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,502 +13,847 @@
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
   <style>
-    *, *::before, *::after { box-sizing: border-box; }
-    body { font-family: 'Inter', sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; min-height: 100vh; }
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
 
-    .page-nav { display: flex; justify-content: space-between; align-items: center; max-width: 640px; margin: 0 auto 14px; }
-    .page-nav a { color: #94a3b8; text-decoration: none; font-size: 14px; }
-    .page-nav a:hover { color: #38bdf8; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #0f172a;
+      color: #f8fafc;
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+    }
 
-    .container { max-width: 640px; margin: 0 auto; background: #1e293b; padding: 32px; border-radius: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.5); }
-    h1 { text-align: center; color: #38bdf8; margin: 0 0 6px; font-size: 24px; }
-    .subtitle { text-align: center; color: #64748b; font-size: 13px; margin-bottom: 28px; }
+    .page-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 640px;
+      margin: 0 auto 14px;
+    }
+
+    .page-nav a {
+      color: #94a3b8;
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    .page-nav a:hover {
+      color: #38bdf8;
+    }
+
+    .container {
+      max-width: 640px;
+      margin: 0 auto;
+      background: #1e293b;
+      padding: 32px;
+      border-radius: 16px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    h1 {
+      text-align: center;
+      color: #38bdf8;
+      margin: 0 0 6px;
+      font-size: 24px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #64748b;
+      font-size: 13px;
+      margin-bottom: 28px;
+    }
 
     /* Password gate */
-    #passwordGate { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 20px 0; }
-    #passwordGate h2 { margin: 0; color: #f1f5f9; font-size: 22px; }
-    #passwordGate p { margin: 0; color: #64748b; font-size: 14px; text-align: center; }
-    #adminPassword {
-      padding: 12px 16px; font-size: 18px; width: 100%; max-width: 280px;
-      border-radius: 10px; border: 2px solid #334155; background: #0f172a; color: #fff;
-      text-align: center; letter-spacing: 6px; outline: none; transition: border-color .2s;
+    #passwordGate {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      padding: 20px 0;
     }
-    #adminPassword:focus { border-color: #38bdf8; }
-    .btn-login { padding: 12px 36px; font-size: 15px; border: none; border-radius: 10px; background: linear-gradient(135deg,#38bdf8,#0ea5e9); color: #0f172a; cursor: pointer; font-weight: 700; }
-    .btn-login:hover { opacity: .85; }
+
+    #passwordGate h2 {
+      margin: 0;
+      color: #f1f5f9;
+      font-size: 22px;
+    }
+
+    #passwordGate p {
+      margin: 0;
+      color: #64748b;
+      font-size: 14px;
+      text-align: center;
+    }
+
+    #adminPassword {
+      padding: 12px 16px;
+      font-size: 18px;
+      width: 100%;
+      max-width: 280px;
+      border-radius: 10px;
+      border: 2px solid #334155;
+      background: #0f172a;
+      color: #fff;
+      text-align: center;
+      letter-spacing: 6px;
+      outline: none;
+      transition: border-color .2s;
+    }
+
+    #adminPassword:focus {
+      border-color: #38bdf8;
+    }
+
+    .btn-login {
+      padding: 12px 36px;
+      font-size: 15px;
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+      color: #0f172a;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .btn-login:hover {
+      opacity: .85;
+    }
 
     /* Admin panel */
-    #adminPanel { display: none; }
+    #adminPanel {
+      display: none;
+    }
 
     /* Scanner section */
-    .scanner-section { border: 2px dashed #334155; border-radius: 14px; padding: 22px; margin-bottom: 24px; }
-    .scanner-section h3 { margin: 0 0 4px; color: #e2e8f0; font-size: 16px; }
-    .scanner-section .hint { margin: 0 0 16px; color: #64748b; font-size: 12px; }
+    .scanner-section {
+      border: 2px dashed #334155;
+      border-radius: 14px;
+      padding: 22px;
+      margin-bottom: 24px;
+    }
 
-    .scan-tabs { display: flex; gap: 8px; margin-bottom: 18px; }
-    .scan-tab { flex: 1; padding: 9px 6px; border: 1px solid #334155; background: #0f172a; color: #94a3b8; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all .2s; }
-    .scan-tab.active { border-color: #38bdf8; color: #38bdf8; background: rgba(56,189,248,.08); }
+    .scanner-section h3 {
+      margin: 0 0 4px;
+      color: #e2e8f0;
+      font-size: 16px;
+    }
+
+    .scanner-section .hint {
+      margin: 0 0 16px;
+      color: #64748b;
+      font-size: 12px;
+    }
+
+    .scan-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    .scan-tab {
+      flex: 1;
+      padding: 9px 6px;
+      border: 1px solid #334155;
+      background: #0f172a;
+      color: #94a3b8;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all .2s;
+    }
+
+    .scan-tab.active {
+      border-color: #38bdf8;
+      color: #38bdf8;
+      background: rgba(56, 189, 248, .08);
+    }
 
     /* Camera */
-    #cameraPanel { display: block; }
-    #cameraReader { width: 100%; border-radius: 10px; overflow: hidden; min-height: 200px; background:#0f172a; display: none; }
-    .cam-hint { text-align: center; font-size: 12px; color: #64748b; margin-top: 8px; display: none; }
-    .btn-cam { width: 100%; padding: 11px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 8px; transition: opacity .2s; }
-    .btn-cam.start { background: #10b981; color: white; }
-    .btn-cam.stop { background: #ef4444; color: white; display: none; }
-    .btn-cam:hover { opacity: .85; }
+    #cameraPanel {
+      display: block;
+    }
+
+    #cameraReader {
+      width: 100%;
+      border-radius: 10px;
+      overflow: hidden;
+      min-height: 200px;
+      background: #0f172a;
+      display: none;
+    }
+
+    .cam-hint {
+      text-align: center;
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 8px;
+      display: none;
+    }
+
+    .btn-cam {
+      width: 100%;
+      padding: 11px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: opacity .2s;
+    }
+
+    .btn-cam.start {
+      background: #10b981;
+      color: white;
+    }
+
+    .btn-cam.stop {
+      background: #ef4444;
+      color: white;
+      display: none;
+    }
+
+    .btn-cam:hover {
+      opacity: .85;
+    }
 
     /* File upload */
-    #filePanel { display: none; }
-    .file-drop { border: 2px dashed #475569; border-radius: 10px; padding: 28px 20px; text-align: center; cursor: pointer; transition: all .2s; }
-    .file-drop:hover, .file-drop.drag-over { border-color: #38bdf8; background: rgba(56,189,248,.04); }
-    .file-drop input[type=file] { display: none; }
-    .file-drop-icon { font-size: 40px; margin-bottom: 10px; }
-    .file-drop-text { color: #64748b; font-size: 14px; }
-    .file-drop-text span { color: #38bdf8; font-weight: 500; }
+    #filePanel {
+      display: none;
+    }
+
+    .file-drop {
+      border: 2px dashed #475569;
+      border-radius: 10px;
+      padding: 28px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all .2s;
+    }
+
+    .file-drop:hover,
+    .file-drop.drag-over {
+      border-color: #38bdf8;
+      background: rgba(56, 189, 248, .04);
+    }
+
+    .file-drop input[type=file] {
+      display: none;
+    }
+
+    .file-drop-icon {
+      font-size: 40px;
+      margin-bottom: 10px;
+    }
+
+    .file-drop-text {
+      color: #64748b;
+      font-size: 14px;
+    }
+
+    .file-drop-text span {
+      color: #38bdf8;
+      font-weight: 500;
+    }
 
     /* Cropper */
-    .crop-container { display: none; margin-top: 14px; max-height: 300px; overflow: hidden; border-radius: 8px; background: #0f172a; }
-    .crop-container img { max-width: 100%; display: block; }
-    .crop-actions { display: none; gap: 8px; margin-top: 10px; }
-    .btn-crop { flex: 1; padding: 10px; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
-    .btn-crop.primary { background: #10b981; color: white; }
-    .btn-crop.secondary { background: #334155; color: #e2e8f0; }
-    .btn-crop:hover { opacity: .85; }
+    .crop-container {
+      display: none;
+      margin-top: 14px;
+      max-height: 300px;
+      overflow: hidden;
+      border-radius: 8px;
+      background: #0f172a;
+    }
+
+    .crop-container img {
+      max-width: 100%;
+      display: block;
+    }
+
+    .crop-actions {
+      display: none;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .btn-crop {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-crop.primary {
+      background: #10b981;
+      color: white;
+    }
+
+    .btn-crop.secondary {
+      background: #334155;
+      color: #e2e8f0;
+    }
+
+    .btn-crop:hover {
+      opacity: .85;
+    }
 
     /* Scanned barcode badge */
-    .barcode-badge { display: none; align-items: center; gap: 10px; background: rgba(56,189,248,.08); border: 1px solid #38bdf8; border-radius: 10px; padding: 12px 16px; margin-bottom: 18px; }
-    .barcode-badge.show { display: flex; }
-    .barcode-badge .code { font-weight: 700; color: #38bdf8; font-size: 15px; letter-spacing: 1px; }
-    .barcode-badge small { color: #64748b; font-size: 12px; display: block; }
+    .barcode-badge {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      background: rgba(56, 189, 248, .08);
+      border: 1px solid #38bdf8;
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-bottom: 18px;
+    }
+
+    .barcode-badge.show {
+      display: flex;
+    }
+
+    .barcode-badge .code {
+      font-weight: 700;
+      color: #38bdf8;
+      font-size: 15px;
+      letter-spacing: 1px;
+    }
+
+    .barcode-badge small {
+      color: #64748b;
+      font-size: 12px;
+      display: block;
+    }
 
     /* Form */
-    .form-group { margin-bottom: 16px; }
-    label { display: block; margin-bottom: 5px; color: #94a3b8; font-size: 13px; font-weight: 500; }
-    input[type=text], input[type=date], select, textarea {
-      width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #334155;
-      background: #0f172a; color: #f1f5f9; font-size: 14px; font-family: inherit; outline: none; transition: border-color .2s;
+    .form-group {
+      margin-bottom: 16px;
     }
-    input:focus, select:focus, textarea:focus { border-color: #38bdf8; }
-    .date-row { display: flex; gap: 14px; }
-    .date-row .form-group { flex: 1; }
 
-    .btn-save { background: linear-gradient(135deg,#3b82f6,#2563eb); color: white; width: 100%; padding: 14px; border: none; border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; transition: opacity .2s; margin-top: 8px; }
-    .btn-save:hover { opacity: .9; }
-    .btn-save:disabled { opacity: .5; cursor: not-allowed; }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      color: #94a3b8;
+      font-size: 13px;
+      font-weight: 500;
+    }
 
-    .msg { padding: 12px 16px; border-radius: 10px; margin-bottom: 18px; font-size: 14px; display: none; }
-    .msg.show { display: block; }
-    .msg.error { background: rgba(239,68,68,.15); border: 1px solid #ef4444; color: #fca5a5; }
-    .msg.success { background: rgba(16,185,129,.15); border: 1px solid #10b981; color: #6ee7b7; }
+    input[type=text],
+    input[type=date],
+    select,
+    textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      background: #0f172a;
+      color: #f1f5f9;
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color .2s;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: #38bdf8;
+    }
+
+    .date-row {
+      display: flex;
+      gap: 14px;
+    }
+
+    .date-row .form-group {
+      flex: 1;
+    }
+
+    .btn-save {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: white;
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity .2s;
+      margin-top: 8px;
+    }
+
+    .btn-save:hover {
+      opacity: .9;
+    }
+
+    .btn-save:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+
+    .msg {
+      padding: 12px 16px;
+      border-radius: 10px;
+      margin-bottom: 18px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .msg.show {
+      display: block;
+    }
+
+    .msg.error {
+      background: rgba(239, 68, 68, .15);
+      border: 1px solid #ef4444;
+      color: #fca5a5;
+    }
+
+    .msg.success {
+      background: rgba(16, 185, 129, .15);
+      border: 1px solid #10b981;
+      color: #6ee7b7;
+    }
 
     /* Loading spinner */
-    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.3); border-top-color: white; border-radius: 50%; animation: spin .6s linear infinite; vertical-align: middle; margin-right: 6px; }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255, 255, 255, .3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
   </style>
 </head>
+
 <body>
 
-<div class="page-nav">
-  <a href="../dashboard/dashboard.html">← Back to Dashboard</a>
-  <span style="color:#64748b;font-size:13px;">⚙️ Admin Catalog</span>
-</div>
-
-<!-- PASSWORD GATE -->
-<div class="container" id="passwordGate">
-  <div id="passwordGateInner" style="display:flex;flex-direction:column;align-items:center;gap:16px;padding:20px 0;">
-    <div style="font-size:48px;">🔐</div>
-    <h2 style="margin:0;color:#f1f5f9;">Admin Access</h2>
-    <p style="margin:0;color:#64748b;text-align:center;font-size:14px;">Enter the master password to manage the Global Product Catalog.</p>
-    <input type="password" id="adminPassword" placeholder="••••••••" onkeydown="if(event.key==='Enter') checkPassword()">
-    <button class="btn-login" onclick="checkPassword()">Unlock Admin</button>
-    <div id="loginError" class="msg error" style="max-width:300px;text-align:center;"></div>
+  <div class="page-nav">
+    <a href="../dashboard/dashboard.html">← Back to Dashboard</a>
+    <span style="color:#64748b;font-size:13px;">⚙️ Admin Catalog</span>
   </div>
-</div>
 
-<!-- ADMIN PANEL -->
-<div class="container" id="adminPanel">
-  <h1>⚙️ Admin Catalog</h1>
-  <p class="subtitle">Scan a product's barcode and save its details. All users will auto-fill when they scan it.</p>
-
-  <!-- Scanner Section -->
-  <div class="scanner-section">
-    <h3>📷 Scan / Upload Barcode</h3>
-    <p class="hint">Hold the barcode horizontally in front of the camera, within the red line area.</p>
-
-    <div class="scan-tabs">
-      <button class="scan-tab active" id="tabCamera" onclick="switchTab('camera')">📷 Live Camera</button>
-      <button class="scan-tab" id="tabFile" onclick="switchTab('file')">🖼️ Upload & Crop</button>
-    </div>
-
-    <!-- CAMERA PANEL -->
-    <div id="cameraPanel">
-      <div id="cameraReader"></div>
-      <div class="cam-hint" id="camHint">📐 Align the barcode within the red line horizontally</div>
-      <button class="btn-cam start" id="btnStartCam" onclick="startCamera()">📷 Start Camera Scanner</button>
-      <button class="btn-cam stop" id="btnStopCam" onclick="stopCamera()">⏹ Stop Camera</button>
-    </div>
-
-    <!-- FILE UPLOAD PANEL -->
-    <div id="filePanel">
-      <div class="file-drop" id="fileDrop"
-        onclick="document.getElementById('fileInput').click()"
-        ondragover="event.preventDefault();this.classList.add('drag-over')"
-        ondragleave="this.classList.remove('drag-over')"
-        ondrop="handleDrop(event)">
-        <input type="file" id="fileInput" accept="image/*" onchange="loadImageForCrop(this.files)">
-        <div class="file-drop-icon">📁</div>
-        <div class="file-drop-text" id="dropText">Drop barcode image here or <span>click to browse</span></div>
-      </div>
-
-      <!-- Cropper -->
-      <div class="crop-container" id="cropContainer">
-        <img id="cropImg" src="" alt="crop">
-      </div>
-      <div class="crop-actions" id="cropActions">
-        <button class="btn-crop secondary" onclick="document.getElementById('fileInput').click()">🔄 Change</button>
-        <button class="btn-crop primary" id="btnScanCropped" onclick="scanCropped()">✂️ Crop & Scan Barcode</button>
-      </div>
+  <!-- PASSWORD GATE -->
+  <div class="container" id="passwordGate">
+    <div id="passwordGateInner" style="display:flex;flex-direction:column;align-items:center;gap:16px;padding:20px 0;">
+      <div style="font-size:48px;">🔐</div>
+      <h2 style="margin:0;color:#f1f5f9;">Admin Access</h2>
+      <p style="margin:0;color:#64748b;text-align:center;font-size:14px;">Enter the master password to manage the Global
+        Product Catalog.</p>
+      <input type="password" id="adminPassword" placeholder="••••••••"
+        onkeydown="if(event.key==='Enter') checkPassword()">
+      <button class="btn-login" onclick="checkPassword()">Unlock Admin</button>
+      <div id="loginError" class="msg error" style="max-width:300px;text-align:center;"></div>
     </div>
   </div>
 
-  <!-- Detected barcode badge -->
-  <div class="barcode-badge" id="barcodeBadge">
-    <span style="font-size:22px;">🏷️</span>
-    <div>
-      <div class="code" id="barcodeDisplay">—</div>
-      <small>Barcode detected ✅</small>
-    </div>
-  </div>
+  <!-- ADMIN PANEL -->
+  <div class="container" id="adminPanel">
+    <h1>⚙️ Admin Catalog</h1>
+    <p class="subtitle">Scan a product's barcode and save its details. All users will auto-fill when they scan it.</p>
 
-  <div class="msg" id="alertBox"></div>
+    <!-- Scanner Section -->
+    <div class="scanner-section">
+      <h3>📷 Scan / Upload Barcode</h3>
+      <p class="hint">Hold the barcode horizontally in front of the camera, within the red line area.</p>
 
-  <!-- Product Form -->
-  <form id="adminForm">
-    <div class="form-group">
-      <label>Barcode Number *</label>
-      <input type="text" id="barcode" placeholder="Scan above, or type barcode manually" required>
+      <div class="scan-tabs">
+        <button class="scan-tab active" id="tabCamera" onclick="switchTab('camera')">📷 Live Camera</button>
+        <button class="scan-tab" id="tabFile" onclick="switchTab('file')">🖼️ Upload & Crop</button>
+      </div>
+
+      <!-- CAMERA PANEL -->
+      <div id="cameraPanel">
+        <div id="cameraReader"></div>
+        <div class="cam-hint" id="camHint">📐 Align the barcode within the red line horizontally</div>
+        <button class="btn-cam start" id="btnStartCam" onclick="startCamera()">📷 Start Camera Scanner</button>
+        <button class="btn-cam stop" id="btnStopCam" onclick="stopCamera()">⏹ Stop Camera</button>
+      </div>
+
+      <!-- FILE UPLOAD PANEL -->
+      <div id="filePanel">
+        <div class="file-drop" id="fileDrop" onclick="document.getElementById('fileInput').click()"
+          ondragover="event.preventDefault();this.classList.add('drag-over')"
+          ondragleave="this.classList.remove('drag-over')" ondrop="handleDrop(event)">
+          <input type="file" id="fileInput" accept="image/*" onchange="loadImageForCrop(this.files)">
+          <div class="file-drop-icon">📁</div>
+          <div class="file-drop-text" id="dropText">Drop barcode image here or <span>click to browse</span></div>
+        </div>
+
+        <!-- Cropper -->
+        <div class="crop-container" id="cropContainer">
+          <img id="cropImg" src="" alt="crop">
+        </div>
+        <div class="crop-actions" id="cropActions">
+          <button class="btn-crop secondary" onclick="document.getElementById('fileInput').click()">🔄 Change</button>
+          <button class="btn-crop primary" id="btnScanCropped" onclick="scanCropped()">✂️ Crop & Scan Barcode</button>
+        </div>
+      </div>
     </div>
-    <div class="form-group">
-      <label>Product Name *</label>
-      <input type="text" id="productName" placeholder="e.g. Panadol Extra 500mg" required>
+
+    <!-- Detected barcode badge -->
+    <div class="barcode-badge" id="barcodeBadge">
+      <span style="font-size:22px;">🏷️</span>
+      <div>
+        <div class="code" id="barcodeDisplay">—</div>
+        <small>Barcode detected ✅</small>
+      </div>
     </div>
-    <div class="form-group">
-      <label>Category *</label>
-      <select id="category" required>
-        <option value="">Select category...</option>
-        <option value="Food">🍎 Food</option>
-        <option value="Medicine">💊 Medicine</option>
-        <option value="Cosmetics">💄 Cosmetics</option>
-        <option value="Household">🏠 Household</option>
-        <option value="Other">📦 Other</option>
-      </select>
-    </div>
-    <div class="date-row">
+
+    <div class="msg" id="alertBox"></div>
+
+    <!-- Product Form -->
+    <form id="adminForm">
       <div class="form-group">
-        <label>Manufacturing Date</label>
-        <input type="date" id="mfgDate">
+        <label>Barcode Number *</label>
+        <input type="text" id="barcode" placeholder="Scan above, or type barcode manually" required>
       </div>
       <div class="form-group">
-        <label>Expiry Date *</label>
-        <input type="date" id="expiryDate" required>
+        <label>Product Name *</label>
+        <input type="text" id="productName" placeholder="e.g. Panadol Extra 500mg" required>
       </div>
-    </div>
-    <div class="form-group">
-      <label>Admin Notes</label>
-      <textarea id="notes" rows="3" placeholder="Storage instructions, warnings, etc..."></textarea>
-    </div>
-    <button type="submit" class="btn-save" id="saveBtn">💾 Save to Global Catalog</button>
-  </form>
+      <div class="form-group">
+        <label>Category *</label>
+        <select id="category" required>
+          <option value="">Select category...</option>
+          <option value="Food">🍎 Food</option>
+          <option value="Medicine">💊 Medicine</option>
+          <option value="Cosmetics">💄 Cosmetics</option>
+          <option value="Household">🏠 Household</option>
+          <option value="Other">📦 Other</option>
+        </select>
+      </div>
+      <div class="date-row">
+        <div class="form-group">
+          <label>Manufacturing Date</label>
+          <input type="date" id="mfgDate">
+        </div>
+        <div class="form-group">
+          <label>Expiry Date *</label>
+          <input type="date" id="expiryDate" required>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Admin Notes</label>
+        <textarea id="notes" rows="3" placeholder="Storage instructions, warnings, etc..."></textarea>
+      </div>
+      <button type="submit" class="btn-save" id="saveBtn">💾 Save to Global Catalog</button>
+    </form>
 
-  <!-- Hidden area for file scanning -->
-  <div id="fileScanArea" style="display:none;"></div>
-</div>
+    <!-- Hidden area for file scanning -->
+    <div id="fileScanArea" style="display:none;"></div>
+  </div>
 
-<script>
-/* ═══════════════════════════════════════════
-   PASSWORD
-══════════════════════════════════════════ */
-function checkPassword() {
-  const v = document.getElementById('adminPassword').value;
-  const err = document.getElementById('loginError');
-  if (v === '12345678') {
-    document.getElementById('passwordGate').style.display = 'none';
-    document.getElementById('adminPanel').style.display = 'block';
-  } else {
-    err.textContent = '❌ Incorrect password.';
-    err.classList.add('show');
-    document.getElementById('adminPassword').value = '';
-  }
-}
-
-/* ═══════════════════════════════════════════
-   SUPABASE
-══════════════════════════════════════════ */
-let db = null;
-(async () => {
-  const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
-  db = createClient(
-    'https://eeoizguvordycgvrlymh.supabase.co',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVlb2l6Z3V2b3JkeWNndnJseW1oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3NDkwOTYsImV4cCI6MjA5NDMyNTA5Nn0.J2XZ6TtGcRTM4O9efSoCKUiNy31A6WKlBP5U6j_0ouA'
-  );
-})();
-
-/* ═══════════════════════════════════════════
-   TAB SWITCHING
-══════════════════════════════════════════ */
-function switchTab(tab) {
-  stopCamera();
-  document.getElementById('tabCamera').classList.toggle('active', tab === 'camera');
-  document.getElementById('tabFile').classList.toggle('active', tab === 'file');
-  document.getElementById('cameraPanel').style.display = tab === 'camera' ? 'block' : 'none';
-  document.getElementById('filePanel').style.display = tab === 'file' ? 'block' : 'none';
-}
-
-/* ═══════════════════════════════════════════
-   CAMERA SCANNER — wide qrbox for 1D barcodes
-══════════════════════════════════════════ */
-let scanner = null;
-let isScanning = false;
-
-async function startCamera() {
-  document.getElementById('cameraReader').style.display = 'block';
-  document.getElementById('btnStartCam').style.display = 'none';
-  document.getElementById('btnStopCam').style.display = 'block';
-  document.getElementById('camHint').style.display = 'block';
-
-  // SUPPORTED FORMATS: all 1D + DataMatrix
-  const formats = [
-    Html5QrcodeSupportedFormats.EAN_13,
-    Html5QrcodeSupportedFormats.EAN_8,
-    Html5QrcodeSupportedFormats.UPC_A,
-    Html5QrcodeSupportedFormats.UPC_E,
-    Html5QrcodeSupportedFormats.CODE_128,
-    Html5QrcodeSupportedFormats.CODE_39,
-    Html5QrcodeSupportedFormats.CODE_93,
-    Html5QrcodeSupportedFormats.ITF,
-    Html5QrcodeSupportedFormats.CODABAR,
-    Html5QrcodeSupportedFormats.QR_CODE,
-    Html5QrcodeSupportedFormats.DATA_MATRIX,
-  ];
-
-  scanner = new Html5Qrcode('cameraReader', {
-    formatsToSupport: formats,
-    verbose: false
-  });
-
-  try {
-    const cameras = await Html5Qrcode.getCameras();
-    if (!cameras || cameras.length === 0) {
-      showAlert('error', '❌ No camera found. Please use the Upload tab.');
-      stopCamera(); return;
+  <script type="module">
+    /* ═══════════════════════════════════════════
+       PASSWORD
+    ══════════════════════════════════════════ */
+    function checkPassword() {
+      const v = document.getElementById('adminPassword').value;
+      const err = document.getElementById('loginError');
+      if (v === '12345678') {
+        document.getElementById('passwordGate').style.display = 'none';
+        document.getElementById('adminPanel').style.display = 'block';
+      } else {
+        err.textContent = '❌ Incorrect password.';
+        err.classList.add('show');
+        document.getElementById('adminPassword').value = '';
+      }
     }
 
-    // Prefer back/environment camera for better barcode focus
-    const cam = cameras.find(c => /back|environment|rear/i.test(c.label)) || cameras[cameras.length - 1];
+    /* ═══════════════════════════════════════════
+       SUPABASE
+    ══════════════════════════════════════════ */
+    let db = null;
+    import { supabase } from '../../shared/js/supabase.js';
+    db = supabase;
 
-    await scanner.start(
-      { deviceId: { exact: cam.id } },
-      {
-        fps: 15,
-        // Wide rectangular box — perfect for 1D barcodes
-        qrbox: (w, h) => ({ width: Math.min(w * 0.85, 500), height: Math.min(h * 0.25, 100) }),
-        aspectRatio: 1.5,
-        disableFlip: false,
-      },
-      onDetected,
-      () => {} // ignore per-frame failures
-    );
+    /* ═══════════════════════════════════════════
+       TAB SWITCHING
+    ══════════════════════════════════════════ */
+    function switchTab(tab) {
+      stopCamera();
+      document.getElementById('tabCamera').classList.toggle('active', tab === 'camera');
+      document.getElementById('tabFile').classList.toggle('active', tab === 'file');
+      document.getElementById('cameraPanel').style.display = tab === 'camera' ? 'block' : 'none';
+      document.getElementById('filePanel').style.display = tab === 'file' ? 'block' : 'none';
+    }
 
-    isScanning = true;
-  } catch (err) {
-    showAlert('error', '❌ Camera error: ' + (err.message || err));
-    stopCamera();
-  }
-}
+    /* ═══════════════════════════════════════════
+       CAMERA SCANNER — wide qrbox for 1D barcodes
+    ══════════════════════════════════════════ */
+    let scanner = null;
+    let isScanning = false;
 
-function stopCamera() {
-  if (scanner && isScanning) {
-    scanner.stop().then(() => { scanner.clear(); scanner = null; }).catch(() => {});
-  }
-  isScanning = false;
-  document.getElementById('cameraReader').style.display = 'none';
-  document.getElementById('btnStartCam').style.display = 'block';
-  document.getElementById('btnStopCam').style.display = 'none';
-  document.getElementById('camHint').style.display = 'none';
-}
+    async function startCamera() {
+      document.getElementById('cameraReader').style.display = 'block';
+      document.getElementById('btnStartCam').style.display = 'none';
+      document.getElementById('btnStopCam').style.display = 'block';
+      document.getElementById('camHint').style.display = 'block';
 
-/* ═══════════════════════════════════════════
-   FILE UPLOAD + CROPPER
-══════════════════════════════════════════ */
-let cropper = null;
+      // SUPPORTED FORMATS: all 1D + DataMatrix
+      const formats = [
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.UPC_A,
+        Html5QrcodeSupportedFormats.UPC_E,
+        Html5QrcodeSupportedFormats.CODE_128,
+        Html5QrcodeSupportedFormats.CODE_39,
+        Html5QrcodeSupportedFormats.CODE_93,
+        Html5QrcodeSupportedFormats.ITF,
+        Html5QrcodeSupportedFormats.CODABAR,
+        Html5QrcodeSupportedFormats.QR_CODE,
+        Html5QrcodeSupportedFormats.DATA_MATRIX,
+      ];
 
-function loadImageForCrop(files) {
-  if (!files || files.length === 0) return;
-  const file = files[0];
-  const url = URL.createObjectURL(file);
+      scanner = new Html5Qrcode('cameraReader', {
+        formatsToSupport: formats,
+        verbose: false
+      });
 
-  const img = document.getElementById('cropImg');
-  img.src = url;
+      try {
+        const cameras = await Html5Qrcode.getCameras();
+        if (!cameras || cameras.length === 0) {
+          showAlert('error', '❌ No camera found. Please use the Upload tab.');
+          stopCamera(); return;
+        }
 
-  // Show cropper container
-  const container = document.getElementById('cropContainer');
-  container.style.display = 'block';
-  document.getElementById('cropActions').style.display = 'flex';
-  document.getElementById('dropText').innerHTML = '<span>' + file.name + '</span> — crop the barcode area below';
+        // Prefer back/environment camera for better barcode focus
+        const cam = cameras.find(c => /back|environment|rear/i.test(c.label)) || cameras[cameras.length - 1];
 
-  // Destroy previous cropper if any
-  if (cropper) { cropper.destroy(); cropper = null; }
+        await scanner.start(
+          { deviceId: { exact: cam.id } },
+          {
+            fps: 15,
+            // Wide rectangular box — perfect for 1D barcodes
+            qrbox: (w, h) => ({ width: Math.min(w * 0.85, 500), height: Math.min(h * 0.25, 100) }),
+            aspectRatio: 1.5,
+            disableFlip: false,
+          },
+          onDetected,
+          () => { } // ignore per-frame failures
+        );
 
-  img.onload = () => {
-    cropper = new Cropper(img, {
-      viewMode: 1,
-      dragMode: 'crop',
-      autoCropArea: 0.8,
-      restore: false,
-      guides: true,
-      highlight: true,
-      cropBoxMovable: true,
-      cropBoxResizable: true,
-      toggleDragModeOnDblclick: false,
+        isScanning = true;
+      } catch (err) {
+        showAlert('error', '❌ Camera error: ' + (err.message || err));
+        stopCamera();
+      }
+    }
+
+    function stopCamera() {
+      if (scanner && isScanning) {
+        scanner.stop().then(() => { scanner.clear(); scanner = null; }).catch(() => { });
+      }
+      isScanning = false;
+      document.getElementById('cameraReader').style.display = 'none';
+      document.getElementById('btnStartCam').style.display = 'block';
+      document.getElementById('btnStopCam').style.display = 'none';
+      document.getElementById('camHint').style.display = 'none';
+    }
+
+    /* ═══════════════════════════════════════════
+       FILE UPLOAD + CROPPER
+    ══════════════════════════════════════════ */
+    let cropper = null;
+
+    function loadImageForCrop(files) {
+      if (!files || files.length === 0) return;
+      const file = files[0];
+      const url = URL.createObjectURL(file);
+
+      const img = document.getElementById('cropImg');
+      img.src = url;
+
+      // Show cropper container
+      const container = document.getElementById('cropContainer');
+      container.style.display = 'block';
+      document.getElementById('cropActions').style.display = 'flex';
+      document.getElementById('dropText').innerHTML = '<span>' + file.name + '</span> — crop the barcode area below';
+
+      // Destroy previous cropper if any
+      if (cropper) { cropper.destroy(); cropper = null; }
+
+      img.onload = () => {
+        cropper = new Cropper(img, {
+          viewMode: 1,
+          dragMode: 'crop',
+          autoCropArea: 0.8,
+          restore: false,
+          guides: true,
+          highlight: true,
+          cropBoxMovable: true,
+          cropBoxResizable: true,
+          toggleDragModeOnDblclick: false,
+        });
+      };
+    }
+
+    function handleDrop(e) {
+      e.preventDefault();
+      document.getElementById('fileDrop').classList.remove('drag-over');
+      loadImageForCrop(e.dataTransfer.files);
+    }
+
+    async function scanCropped() {
+      if (!cropper) {
+        showAlert('error', '❌ Please select and crop an image first.');
+        return;
+      }
+
+      const btn = document.getElementById('btnScanCropped');
+      btn.innerHTML = '<span class="spinner"></span> Scanning...';
+      btn.disabled = true;
+
+      // Get the cropped canvas and convert to a Blob/File
+      const canvas = cropper.getCroppedCanvas({ maxWidth: 1200, maxHeight: 600 });
+      if (!canvas) {
+        showAlert('error', '❌ Could not read cropped image.');
+        btn.textContent = '✂️ Crop & Scan Barcode';
+        btn.disabled = false;
+        return;
+      }
+
+      canvas.toBlob(async (blob) => {
+        const file = new File([blob], 'crop.jpg', { type: 'image/jpeg' });
+
+        const formats = [
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.UPC_A,
+          Html5QrcodeSupportedFormats.UPC_E,
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.CODE_39,
+          Html5QrcodeSupportedFormats.CODE_93,
+          Html5QrcodeSupportedFormats.ITF,
+          Html5QrcodeSupportedFormats.CODABAR,
+          Html5QrcodeSupportedFormats.QR_CODE,
+          Html5QrcodeSupportedFormats.DATA_MATRIX,
+        ];
+
+        try {
+          const fileScanner = new Html5Qrcode('fileScanArea', { formatsToSupport: formats, verbose: false });
+          const result = await fileScanner.scanFile(file, /* showImage */ false);
+          fileScanner.clear();
+          onDetected(result);
+        } catch (err) {
+          showAlert('error', '❌ No barcode detected in the cropped area. Try cropping tighter around just the barcode lines.');
+        }
+
+        btn.textContent = '✂️ Crop & Scan Barcode';
+        btn.disabled = false;
+      }, 'image/jpeg', 0.95);
+    }
+
+    /* ═══════════════════════════════════════════
+       ON BARCODE DETECTED
+    ══════════════════════════════════════════ */
+    function onDetected(text) {
+      stopCamera();
+      const clean = text.trim();
+      document.getElementById('barcode').value = clean;
+      document.getElementById('barcodeDisplay').textContent = clean;
+      document.getElementById('barcodeBadge').classList.add('show');
+      showAlert('success', '✅ Barcode captured: ' + clean);
+      playBeep();
+      // Scroll to form
+      document.getElementById('adminForm').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    /* ═══════════════════════════════════════════
+       SAVE TO SUPABASE
+    ══════════════════════════════════════════ */
+    document.getElementById('adminForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('saveBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Saving...';
+
+      if (!db) {
+        showAlert('error', '❌ Database not ready. Please wait a moment and try again.');
+        btn.disabled = false; btn.textContent = '💾 Save to Global Catalog'; return;
+      }
+
+      const payload = {
+        barcode: document.getElementById('barcode').value.trim(),
+        name: document.getElementById('productName').value.trim(),
+        category: document.getElementById('category').value,
+        mfg_date: document.getElementById('mfgDate').value || null,
+        expiry_date: document.getElementById('expiryDate').value,
+        notes: document.getElementById('notes').value.trim()
+      };
+
+      const { error } = await db.from('global_catalog').upsert([payload], { onConflict: 'barcode' });
+
+      if (error) {
+        showAlert('error', '❌ Save error: ' + error.message);
+      } else {
+        showAlert('success', `✅ "${payload.name}" saved! Users will now auto-match this barcode.`);
+        document.getElementById('adminForm').reset();
+        document.getElementById('barcodeBadge').classList.remove('show');
+        if (cropper) { cropper.destroy(); cropper = null; }
+        document.getElementById('cropContainer').style.display = 'none';
+        document.getElementById('cropActions').style.display = 'none';
+        document.getElementById('dropText').innerHTML = 'Drop barcode image here or <span>click to browse</span>';
+      }
+
+      btn.disabled = false;
+      btn.textContent = '💾 Save to Global Catalog';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     });
-  };
-}
 
-function handleDrop(e) {
-  e.preventDefault();
-  document.getElementById('fileDrop').classList.remove('drag-over');
-  loadImageForCrop(e.dataTransfer.files);
-}
-
-async function scanCropped() {
-  if (!cropper) {
-    showAlert('error', '❌ Please select and crop an image first.');
-    return;
-  }
-
-  const btn = document.getElementById('btnScanCropped');
-  btn.innerHTML = '<span class="spinner"></span> Scanning...';
-  btn.disabled = true;
-
-  // Get the cropped canvas and convert to a Blob/File
-  const canvas = cropper.getCroppedCanvas({ maxWidth: 1200, maxHeight: 600 });
-  if (!canvas) {
-    showAlert('error', '❌ Could not read cropped image.');
-    btn.textContent = '✂️ Crop & Scan Barcode';
-    btn.disabled = false;
-    return;
-  }
-
-  canvas.toBlob(async (blob) => {
-    const file = new File([blob], 'crop.jpg', { type: 'image/jpeg' });
-
-    const formats = [
-      Html5QrcodeSupportedFormats.EAN_13,
-      Html5QrcodeSupportedFormats.EAN_8,
-      Html5QrcodeSupportedFormats.UPC_A,
-      Html5QrcodeSupportedFormats.UPC_E,
-      Html5QrcodeSupportedFormats.CODE_128,
-      Html5QrcodeSupportedFormats.CODE_39,
-      Html5QrcodeSupportedFormats.CODE_93,
-      Html5QrcodeSupportedFormats.ITF,
-      Html5QrcodeSupportedFormats.CODABAR,
-      Html5QrcodeSupportedFormats.QR_CODE,
-      Html5QrcodeSupportedFormats.DATA_MATRIX,
-    ];
-
-    try {
-      const fileScanner = new Html5Qrcode('fileScanArea', { formatsToSupport: formats, verbose: false });
-      const result = await fileScanner.scanFile(file, /* showImage */ false);
-      fileScanner.clear();
-      onDetected(result);
-    } catch (err) {
-      showAlert('error', '❌ No barcode detected in the cropped area. Try cropping tighter around just the barcode lines.');
+    /* ═══════════════════════════════════════════
+       HELPERS
+    ══════════════════════════════════════════ */
+    function showAlert(type, msg) {
+      const box = document.getElementById('alertBox');
+      box.textContent = msg;
+      box.className = 'msg show ' + type;
+      if (type === 'success') setTimeout(() => box.classList.remove('show'), 10000);
     }
 
-    btn.textContent = '✂️ Crop & Scan Barcode';
-    btn.disabled = false;
-  }, 'image/jpeg', 0.95);
-}
-
-/* ═══════════════════════════════════════════
-   ON BARCODE DETECTED
-══════════════════════════════════════════ */
-function onDetected(text) {
-  stopCamera();
-  const clean = text.trim();
-  document.getElementById('barcode').value = clean;
-  document.getElementById('barcodeDisplay').textContent = clean;
-  document.getElementById('barcodeBadge').classList.add('show');
-  showAlert('success', '✅ Barcode captured: ' + clean);
-  playBeep();
-  // Scroll to form
-  document.getElementById('adminForm').scrollIntoView({ behavior: 'smooth' });
-}
-
-/* ═══════════════════════════════════════════
-   SAVE TO SUPABASE
-══════════════════════════════════════════ */
-document.getElementById('adminForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const btn = document.getElementById('saveBtn');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Saving...';
-
-  if (!db) {
-    showAlert('error', '❌ Database not ready. Please wait a moment and try again.');
-    btn.disabled = false; btn.textContent = '💾 Save to Global Catalog'; return;
-  }
-
-  const payload = {
-    barcode:      document.getElementById('barcode').value.trim(),
-    name:         document.getElementById('productName').value.trim(),
-    category:     document.getElementById('category').value,
-    mfg_date:     document.getElementById('mfgDate').value || null,
-    expiry_date:  document.getElementById('expiryDate').value,
-    notes:        document.getElementById('notes').value.trim()
-  };
-
-  const { error } = await db.from('global_catalog').upsert([payload], { onConflict: 'barcode' });
-
-  if (error) {
-    showAlert('error', '❌ Save error: ' + error.message);
-  } else {
-    showAlert('success', `✅ "${payload.name}" saved! Users will now auto-match this barcode.`);
-    document.getElementById('adminForm').reset();
-    document.getElementById('barcodeBadge').classList.remove('show');
-    if (cropper) { cropper.destroy(); cropper = null; }
-    document.getElementById('cropContainer').style.display = 'none';
-    document.getElementById('cropActions').style.display = 'none';
-    document.getElementById('dropText').innerHTML = 'Drop barcode image here or <span>click to browse</span>';
-  }
-
-  btn.disabled = false;
-  btn.textContent = '💾 Save to Global Catalog';
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-});
-
-/* ═══════════════════════════════════════════
-   HELPERS
-══════════════════════════════════════════ */
-function showAlert(type, msg) {
-  const box = document.getElementById('alertBox');
-  box.textContent = msg;
-  box.className = 'msg show ' + type;
-  if (type === 'success') setTimeout(() => box.classList.remove('show'), 10000);
-}
-
-function playBeep() {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator(); const g = ctx.createGain();
-    osc.connect(g); g.connect(ctx.destination);
-    osc.frequency.value = 880;
-    g.gain.setValueAtTime(0.12, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
-    osc.start(); osc.stop(ctx.currentTime + 0.2);
-  } catch (_) {}
-}
-</script>
+    function playBeep() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator(); const g = ctx.createGain();
+        osc.connect(g); g.connect(ctx.destination);
+        osc.frequency.value = 880;
+        g.gain.setValueAtTime(0.12, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+        osc.start(); osc.stop(ctx.currentTime + 0.2);
+      } catch (_) { }
+    }
+    window.checkPassword = checkPassword;
+    window.switchTab = switchTab;
+    window.startCamera = startCamera;
+    window.stopCamera = stopCamera;
+    window.handleDrop = handleDrop;
+    window.loadImageForCrop = loadImageForCrop;
+    window.scanCropped = scanCropped;
+  </script>
 </body>
+
 </html>
