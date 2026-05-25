@@ -87,8 +87,7 @@
           <div class="ocr-panel" id="panelCamera">
             <div class="ocr-icon">📷</div>
             <div class="ocr-title">Use Live Camera</div>
-            <div class="ocr-desc" id="cameraDesc">Point your camera at a drug QR code. It will auto-detect, highlight
-              green, and fill form details.</div>
+            <div class="ocr-desc" id="cameraDesc">Point your camera at a drug QR code to auto-detect, or click "Analyze Label" to extract details from the packaging.</div>
             <div style="margin-bottom: 12px; display: none;" id="scanStatusContainer">
               <span class="scan-status-tag" id="scanStatusTag">🟢 Scanning...</span>
             </div>
@@ -125,8 +124,8 @@
             <canvas id="cameraCanvas" style="display:none;"></canvas>
             <div class="camera-actions">
               <button type="button" class="btn-ocr" id="btnStartCam" onclick="startCamera()">▶️ Start Camera</button>
-              <button type="button" class="btn-ocr" id="btnRescan" onclick="resumeScanning()" style="display:none">🔄
-                Scan Next</button>
+              <button type="button" class="btn-ocr" id="btnCaptureLabel" onclick="captureLiveLabel()" style="display:none">📸 Analyze Label</button>
+              <button type="button" class="btn-ocr" id="btnRescan" onclick="resumeScanning()" style="display:none">🔄 Scan Next</button>
               <button type="button" class="btn-ocr-red" id="btnStopCam" onclick="stopCamera()" style="display:none">⏹
                 Stop Camera</button>
             </div>
@@ -528,28 +527,22 @@
         // jsQR successfully found a QR code! Just like a normal scanner, display immediately
         const notesEl = document.getElementById('prodNotes');
         notesEl.value = (notesEl.value ? notesEl.value + '\n' : '') + "Scanned: " + code.data;
+      }
+
+      // ALWAYS send the image to Gemini OCR to detect product name, mfg, expiry
+      canvas.toBlob(async (blob) => {
+        await sendToOCR(blob);
         
-        if (code.data.toLowerCase().startsWith('http://') || code.data.toLowerCase().startsWith('https://')) {
-          window.open(code.data, '_blank');
-        }
-
-        document.getElementById('successBox').textContent = '✅ QR Code scanned successfully!';
-        document.getElementById('successBox').classList.add('show');
-
         btn.disabled = false;
         scanText.style.display = 'inline';
         scanLoad.style.display = 'none';
         
+        if (code && code.data && (code.data.toLowerCase().startsWith('http://') || code.data.toLowerCase().startsWith('https://'))) {
+          window.open(code.data, '_blank');
+        }
+        
         document.getElementById('productForm').scrollIntoView({ behavior: 'smooth' });
-      } else {
-        // Fallback to backend processing (OCR) if no QR is found
-        canvas.toBlob(async (blob) => {
-          await sendToOCR(blob);
-          btn.disabled = false;
-          scanText.style.display = 'inline';
-          scanLoad.style.display = 'none';
-        }, 'image/jpeg', 0.92);
-      }
+      }, 'image/jpeg', 0.92);
     }
 
     // ── LIVE CAMERA (Google-Style QR Live Scanner) ──────────────────────────
@@ -698,6 +691,7 @@
 
         camControls.style.display = 'flex';
         btnStart.style.display = 'none';
+        document.getElementById('btnCaptureLabel').style.display = 'inline';
         btnStop.style.display = 'inline';
 
         isScanning = true;
@@ -822,6 +816,7 @@
       torchActive = false;
 
       document.getElementById('btnStartCam').style.display = 'inline';
+      document.getElementById('btnCaptureLabel').style.display = 'none';
       document.getElementById('btnRescan').style.display = 'none';
       document.getElementById('btnStopCam').style.display = 'none';
     }
@@ -883,8 +878,9 @@
 
             const decodedText = code.data; // Already decoded by jsQR — use directly!
 
-            document.getElementById('scanStatusTag').textContent = '⚡ Processing QR...';
+            document.getElementById('scanStatusTag').textContent = '⚡ Extracting details...';
             document.getElementById('btnRescan').style.display = 'inline';
+            document.getElementById('btnCaptureLabel').style.display = 'none';
 
             // Reset confirmation state for next scan
             qrConfirmCount = 0;
@@ -894,17 +890,17 @@
             const notesEl = document.getElementById('prodNotes');
             notesEl.value = (notesEl.value ? notesEl.value + '\n' : '') + "Scanned: " + decodedText;
 
-            if (decodedText.toLowerCase().startsWith('http://') || decodedText.toLowerCase().startsWith('https://')) {
-              window.open(decodedText, '_blank');
-            }
+            // ALWAYS send the frame to Gemini OCR to extract fields!
+            canvas.toBlob(async (blob) => {
+               await sendToOCR(blob);
+               
+               if (decodedText.toLowerCase().startsWith('http://') || decodedText.toLowerCase().startsWith('https://')) {
+                 window.open(decodedText, '_blank');
+               }
 
-            stopCamera();
-            
-            const successBox = document.getElementById('successBox');
-            successBox.textContent = '✅ QR Code scanned successfully!';
-            successBox.classList.add('show');
-            
-            document.getElementById('productForm').scrollIntoView({ behavior: 'smooth' });
+               stopCamera();
+               document.getElementById('productForm').scrollIntoView({ behavior: 'smooth' });
+            }, 'image/jpeg', 0.92);
 
             return;
           }
@@ -930,6 +926,7 @@
       overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
 
       btnRescan.style.display = 'none';
+      document.getElementById('btnCaptureLabel').style.display = 'inline';
       statusTag.textContent = '🟢 Scanning...';
 
       // Reset confirmation state before resuming
@@ -939,6 +936,31 @@
       isScanning = true;
       video.play();
       requestAnimationFrame(scanLoop);
+    }
+
+    async function captureLiveLabel() {
+      const video = document.getElementById('cameraStream');
+      const canvas = document.getElementById('cameraCanvas');
+      if (!isScanning || video.readyState !== video.HAVE_ENOUGH_DATA) return;
+      
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      isScanning = false;
+      video.pause();
+      playBeep();
+      
+      document.getElementById('scanStatusTag').textContent = '⚡ Analyzing Label...';
+      document.getElementById('btnRescan').style.display = 'inline';
+      document.getElementById('btnCaptureLabel').style.display = 'none';
+
+      canvas.toBlob(async (blob) => {
+        await sendToOCR(blob);
+        stopCamera();
+        document.getElementById('productForm').scrollIntoView({ behavior: 'smooth' });
+      }, 'image/jpeg', 0.92);
     }
 
     // ── selectCategoryValue — used by fillProductFromScan ─────────────────
