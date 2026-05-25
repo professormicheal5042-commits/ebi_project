@@ -827,7 +827,7 @@
       document.getElementById('btnStopCam').style.display = 'none';
     }
 
-    function scanLoop() {
+    async function scanLoop() {
       if (!isScanning) return;
 
       const video = document.getElementById('cameraStream');
