@@ -568,6 +568,8 @@
   </div>
 
   <script type="module">
+    import { supabase } from '../../shared/js/supabase.js';
+
     /* ═══════════════════════════════════════════
        PASSWORD
     ══════════════════════════════════════════ */
@@ -587,9 +589,7 @@
     /* ═══════════════════════════════════════════
        SUPABASE
     ══════════════════════════════════════════ */
-    let db = null;
-    import { supabase } from '../../shared/js/supabase.js';
-    db = supabase;
+    let db = supabase;
 
     /* ═══════════════════════════════════════════
        TAB SWITCHING
