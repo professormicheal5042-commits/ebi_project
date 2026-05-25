@@ -251,6 +251,105 @@
     const QR_PRODUCT_API = () => window.QR_PRODUCT_API_URL || 'https://ebi-project-yr1i.onrender.com/api/scan-qr-product';
     const ENRICH_QR_PAYLOAD_API = () => window.ENRICH_QR_PAYLOAD_API_URL || 'https://ebi-project-yr1i.onrender.com/api/enrich-qr-payload';
 
+    // ── GS1 PARSER — instantly parse pharmaceutical QR codes locally ──────
+    function parseGS1(text) {
+      const result = {};
+      const regex = /\((\d{2,4})\)([^(]*)/g;
+      let match;
+      while ((match = regex.exec(text)) !== null) {
+        const ai = match[1];
+        const value = match[2].trim();
+        switch (ai) {
+          case '01': result.gtin = value.replace(/\D/g, ''); break;
+          case '10': result.batch = value; break;
+          case '11': result.mfgDate = parseGS1Date(value); break;
+          case '15': result.expiry = parseGS1Date(value); break;
+          case '17': result.expiry = parseGS1Date(value); break;
+          case '21': result.serial = value; break;
+          case '30': result.qty = value; break;
+        }
+      }
+      return Object.keys(result).length > 0 ? result : null;
+    }
+
+    function parseGS1Date(raw) {
+      const digits = raw.replace(/\D/g, '');
+      if (digits.length < 6) return null;
+      const yy = parseInt(digits.substring(0, 2));
+      const mm = digits.substring(2, 4);
+      let dd = digits.substring(4, 6);
+      const year = yy < 50 ? 2000 + yy : 1900 + yy;
+      if (dd === '00') {
+        dd = String(new Date(year, parseInt(mm), 0).getDate()).padStart(2, '0');
+      }
+      return `${year}-${mm}-${dd}`;
+    }
+
+    function autoFillFromGS1(gs1, rawText) {
+      const filled = [];
+      const successBox = document.getElementById('successBox');
+      const errorBox = document.getElementById('errorBox');
+      errorBox.classList.remove('show');
+      successBox.classList.remove('show');
+
+      // Product Name from serial (21) — format dynamically from ALL CAPS to Title Case
+      if (gs1.serial) {
+        // e.g. "OLAPLEZA-5 MD" -> "Olapleza-5 MD"
+        const formattedName = gs1.serial.toLowerCase().replace(/\b\w/g, s => s.toUpperCase());
+        document.getElementById('prodName').value = formattedName;
+        filled.push('Name');
+      }
+
+      // Expiry Date from (17) or (15)
+      if (gs1.expiry) {
+        document.getElementById('prodExpiryDate').value = gs1.expiry;
+        filled.push('Expiry');
+      }
+
+      // Manufacturing Date from (11)
+      if (gs1.mfgDate) {
+        document.getElementById('prodMfgDate').value = gs1.mfgDate;
+        filled.push('Mfg Date');
+      }
+
+      // Auto-detect Category from serial text
+      const serial = (gs1.serial || '').toLowerCase();
+      if (serial.includes('md') || serial.includes('tab') || serial.includes('cap') ||
+          serial.includes('mg') || serial.includes('inj') || serial.includes('syr')) {
+        selectCategoryValue('Medicine');
+        filled.push('Category');
+      }
+
+      // Build Notes with all scanned details
+      const noteParts = [];
+      if (gs1.gtin) noteParts.push(`Barcode (GTIN): ${gs1.gtin}`);
+      if (gs1.batch) noteParts.push(`Batch/Lot: ${gs1.batch}`);
+      if (gs1.serial) noteParts.push(`Serial: ${gs1.serial}`);
+      if (gs1.qty) noteParts.push(`Quantity: ${gs1.qty}`);
+      noteParts.push(`Scanned: ${rawText}`);
+      document.getElementById('prodNotes').value = noteParts.join('\n');
+      filled.push('Notes');
+
+      // Show success
+      successBox.textContent = `✅ GS1 Auto-filled: ${filled.join(' · ')}. Review and save!`;
+      successBox.classList.add('show');
+      return true;
+    }
+
+    // ── Handle ANY decoded QR/barcode text — GS1 first, then API fallback ──
+    async function handleDecodedText(decodedText) {
+      // 1. Try GS1 parsing locally (instant, no API call)
+      const gs1 = parseGS1(decodedText);
+      if (gs1) {
+        autoFillFromGS1(gs1, decodedText);
+        return true;
+      }
+
+      // 2. Not GS1 — fall back to API enrichment (URLs, plain barcodes)
+      await sendToEnrichQrPayload(decodedText);
+      return true;
+    }
+
     // ── Form init ─────────────────────────────────────────────────────────
     const params = new URLSearchParams(window.location.search);
     const editId = params.get('id');
@@ -524,14 +623,9 @@
       });
 
       if (code && code.data) {
-        // ── QR CODE FOUND — act like a real scanner ──
-        // Send the decoded TEXT to the enrichment API (visits URLs, looks up barcodes)
+        // ── QR CODE FOUND — parse locally or enrich via API ──
         playBeep();
-        const decodedText = code.data;
-        const notesEl = document.getElementById('prodNotes');
-        notesEl.value = (notesEl.value ? notesEl.value + '\n' : '') + "Scanned: " + decodedText;
-
-        await sendToEnrichQrPayload(decodedText);
+        await handleDecodedText(code.data);
 
         btn.disabled = false;
         scanText.style.display = 'inline';
@@ -539,7 +633,6 @@
         document.getElementById('productForm').scrollIntoView({ behavior: 'smooth' });
       } else {
         // ── NO QR CODE — treat as a product label image ──
-        // Send the image to Gemini Vision to read text off the packaging
         canvas.toBlob(async (blob) => {
           await sendToOCR(blob);
 
@@ -892,12 +985,8 @@
             qrConfirmCount = 0;
             lastQrData = null;
 
-            // Just like a normal scanner: output immediately
-            const notesEl = document.getElementById('prodNotes');
-            notesEl.value = (notesEl.value ? notesEl.value + '\n' : '') + "Scanned: " + decodedText;
-
-            // Send the decoded TEXT to the enrichment API (visits URLs, looks up barcodes)
-            await sendToEnrichQrPayload(decodedText);
+            // Parse and auto-fill locally (GS1) or via API fallback
+            await handleDecodedText(decodedText);
 
             stopCamera();
             document.getElementById('productForm').scrollIntoView({ behavior: 'smooth' });
