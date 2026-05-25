@@ -328,10 +328,17 @@ def _gs1_date(raw: str) -> str:
     raw = re.sub(r'\D', '', raw.strip())
     if len(raw) < 6:
         return "Not found"
-    yy = int(raw[:2])
-    mm = raw[2:4]
-    dd = raw[4:6]
-    year = 2000 + yy if yy < 50 else 1900 + yy
+        
+    if len(raw) == 8 and (raw.startswith('20') or raw.startswith('19')):
+        year = int(raw[:4])
+        mm = raw[4:6]
+        dd = raw[6:8]
+    else:
+        yy = int(raw[:2])
+        mm = raw[2:4]
+        dd = raw[4:6]
+        year = 2000 + yy if yy < 50 else 1900 + yy
+        
     if dd == '00':
         import calendar
         dd = str(calendar.monthrange(year, int(mm))[1]).zfill(2)

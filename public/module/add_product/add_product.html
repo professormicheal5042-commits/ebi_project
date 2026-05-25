@@ -275,10 +275,21 @@
     function parseGS1Date(raw) {
       const digits = raw.replace(/\D/g, '');
       if (digits.length < 6) return null;
-      const yy = parseInt(digits.substring(0, 2));
-      const mm = digits.substring(2, 4);
-      let dd = digits.substring(4, 6);
-      const year = yy < 50 ? 2000 + yy : 1900 + yy;
+      
+      let year, mm, dd;
+      if (digits.length === 8 && (digits.startsWith('20') || digits.startsWith('19'))) {
+        // Non-standard YYYYMMDD
+        year = parseInt(digits.substring(0, 4));
+        mm = digits.substring(4, 6);
+        dd = digits.substring(6, 8);
+      } else {
+        // Standard YYMMDD
+        const yy = parseInt(digits.substring(0, 2));
+        mm = digits.substring(2, 4);
+        dd = digits.substring(4, 6);
+        year = yy < 50 ? 2000 + yy : 1900 + yy;
+      }
+      
       if (dd === '00') {
         dd = String(new Date(year, parseInt(mm), 0).getDate()).padStart(2, '0');
       }
