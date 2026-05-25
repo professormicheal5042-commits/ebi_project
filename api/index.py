@@ -431,14 +431,15 @@ Analyze this image and extract the following information.
 Respond ONLY with a valid JSON object — no markdown, no explanation, just the JSON.
 
 {
-  "name": "product name as written on the label, or 'Unknown' if not found",
+  "name": "Extract the primary product name, brand name, or the largest text on the label. Make your absolute best guess. Never return 'Unknown' if there is any readable text.",
   "category": "one of: Food, Medicine, Cosmetics, Household, Other",
-  "mfg_date": "manufacturing/production date in YYYY-MM-DD format, or 'Not found'",
-  "expiry": "expiry/best-before/use-by date in YYYY-MM-DD format, or 'Not found'",
+  "mfg_date": "manufacturing/production date in YYYY-MM-DD format, or 'Not found' if completely absent.",
+  "expiry": "expiry/best-before/use-by date in YYYY-MM-DD format, or 'Not found' if completely absent.",
   "raw_text": "all readable text on the label as a single string"
 }
 
 Rules:
+- You MUST extract a product name. Pick the most prominent text if unsure.
 - For dates like '12/2027' use the last day of that month: '2027-12-31'
 - For dates like '15/06/2027' use '2027-06-15'
 - Look for labels like: EXP, BEST BEFORE, USE BY, BBE, MFG, MFD, MANUFACTURED, DOM, PROD DATE
