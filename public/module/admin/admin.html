@@ -569,7 +569,10 @@
 
   <script type="module">
     import { supabase } from '../../shared/js/supabase.js';
+    window.supabaseClient = supabase;
+  </script>
 
+  <script>
     /* ═══════════════════════════════════════════
        PASSWORD
     ══════════════════════════════════════════ */
@@ -589,7 +592,8 @@
     /* ═══════════════════════════════════════════
        SUPABASE
     ══════════════════════════════════════════ */
-    let db = supabase;
+    // db is referenced in the save function
+    const getDb = () => window.supabaseClient;
 
     /* ═══════════════════════════════════════════
        TAB SWITCHING
@@ -792,7 +796,8 @@
       btn.disabled = true;
       btn.innerHTML = '<span class="spinner"></span> Saving...';
 
-      if (!db) {
+      const supabaseDb = getDb();
+      if (!supabaseDb) {
         showAlert('error', '❌ Database not ready. Please wait a moment and try again.');
         btn.disabled = false; btn.textContent = '💾 Save to Global Catalog'; return;
       }
@@ -806,7 +811,7 @@
         notes: document.getElementById('notes').value.trim()
       };
 
-      const { error } = await db.from('global_catalog').upsert([payload], { onConflict: 'barcode' });
+      const { error } = await supabaseDb.from('global_catalog').upsert([payload], { onConflict: 'barcode' });
 
       if (error) {
         showAlert('error', '❌ Save error: ' + error.message);
