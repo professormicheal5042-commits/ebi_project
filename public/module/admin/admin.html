@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Global Admin Dashboard | EBI</title>
+  
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../shared/css/theme.css">
+  <script src="../../shared/js/supabase.js"></script>
+  <!-- Load html5-qrcode for 1D barcode scanning -->
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; }
+    .container { max-width: 600px; margin: 0 auto; background: #1e293b; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+    h1 { text-align: center; color: #38bdf8; margin-top: 0; }
+    
+    #passwordGate { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 50vh; }
+    #passwordGate input { padding: 12px; font-size: 16px; width: 100%; max-width: 300px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #fff; text-align: center; margin-bottom: 15px; }
+    #passwordGate button { padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; background: #38bdf8; color: #0f172a; cursor: pointer; font-weight: bold; }
+    
+    #adminPanel { display: none; }
+    
+    .scanner-box { border: 2px dashed #475569; border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 20px; }
+    #reader { width: 100%; border-radius: 8px; overflow: hidden; margin-top: 15px; display: none; }
+    .scan-btn { background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 15px; }
+    
+    .form-group { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; color: #94a3b8; font-size: 14px; }
+    input, select, textarea { width: 100%; padding: 10px; box-sizing: border-box; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: white; }
+    
+    .save-btn { background: #3b82f6; color: white; width: 100%; padding: 12px; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+    .save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    
+    .msg-box { padding: 12px; border-radius: 6px; margin-bottom: 15px; display: none; }
+    .msg-box.error { background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #fca5a5; display: block; }
+    .msg-box.success { background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #6ee7b7; display: block; }
+  </style>
+</head>
+<body>
+
+<div class="container" id="passwordGate">
+  <h2>Admin Access</h2>
+  <p style="color: #94a3b8; margin-bottom: 20px;">Enter the master password to access the Global Catalog Admin.</p>
+  <input type="password" id="adminPassword" placeholder="Enter password">
+  <button onclick="checkPassword()">Login</button>
+  <div id="loginError" class="msg-box" style="margin-top: 15px;"></div>
+</div>
+
+<div class="container" id="adminPanel">
+  <h1>Global Catalog Admin</h1>
+  <p style="text-align: center; color: #94a3b8; margin-bottom: 25px;">Products added here will be automatically matched for all users when they scan.</p>
+  
+  <div class="scanner-box">
+    <h3>1D Barcode Scanner</h3>
+    <p style="color: #94a3b8; font-size: 13px;">Scan a standard barcode (UPC, EAN-13, etc) to link details to it.</p>
+    <button class="scan-btn" id="startScanBtn" onclick="startScanner()">📷 Start Live Scanner</button>
+    <div id="reader"></div>
+  </div>
+
+  <div id="alertBox" class="msg-box"></div>
+
+  <form id="adminForm">
+    <div class="form-group">
+      <label>Scanned Barcode</label>
+      <input type="text" id="barcode" placeholder="Scan barcode or type manually" required>
+    </div>
+    <div class="form-group">
+      <label>Product Name</label>
+      <input type="text" id="name" placeholder="e.g. Panadol Extra" required>
+    </div>
+    <div class="form-group">
+      <label>Category</label>
+      <select id="category" required>
+        <option value="">Select category...</option>
+        <option value="Food">Food</option>
+        <option value="Medicine">Medicine</option>
+        <option value="Cosmetics">Cosmetics</option>
+        <option value="Household">Household</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+    <div style="display: flex; gap: 15px;">
+      <div class="form-group" style="flex: 1;">
+        <label>Manufacturing Date (Optional)</label>
+        <input type="date" id="mfgDate">
+      </div>
+      <div class="form-group" style="flex: 1;">
+        <label>Expiry Date</label>
+        <input type="date" id="expiryDate" required>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Admin Notes</label>
+      <textarea id="notes" rows="3" placeholder="Any specific admin notes..."></textarea>
+    </div>
+    <button type="submit" class="save-btn" id="saveBtn">Save to Global Catalog</button>
+  </form>
+</div>
+
+<script>
+  function checkPassword() {
+    const pwd = document.getElementById('adminPassword').value;
+    if (pwd === '12345678') {
+      document.getElementById('passwordGate').style.display = 'none';
+      document.getElementById('adminPanel').style.display = 'block';
+    } else {
+      const err = document.getElementById('loginError');
+      err.textContent = 'Incorrect password.';
+      err.className = 'msg-box error';
+    }
+  }
+
+  let html5QrcodeScanner = null;
+
+  function startScanner() {
+    document.getElementById('reader').style.display = 'block';
+    document.getElementById('startScanBtn').style.display = 'none';
+    
+    html5QrcodeScanner = new Html5QrcodeScanner(
+      "reader",
+      { fps: 10, qrbox: {width: 250, height: 150}, aspectRatio: 1.0 },
+      /* verbose= */ false
+    );
+    html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+  }
+
+  function onScanSuccess(decodedText, decodedResult) {
+    // Fill barcode
+    document.getElementById('barcode').value = decodedText;
+    
+    // Stop scanner
+    if (html5QrcodeScanner) {
+      html5QrcodeScanner.clear();
+    }
+    document.getElementById('reader').style.display = 'none';
+    document.getElementById('startScanBtn').style.display = 'inline-block';
+    document.getElementById('startScanBtn').textContent = '✅ Scanned! Rescan?';
+    
+    const alertBox = document.getElementById('alertBox');
+    alertBox.textContent = '✅ Barcode captured: ' + decodedText;
+    alertBox.className = 'msg-box success';
+    
+    // Play beep
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 800;
+    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.1);
+  }
+
+  function onScanFailure(error) {
+    // handle scan failure, usually better to ignore and keep scanning
+  }
+
+  document.getElementById('adminForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const alertBox = document.getElementById('alertBox');
+    const saveBtn = document.getElementById('saveBtn');
+    
+    const barcode = document.getElementById('barcode').value.trim();
+    const name = document.getElementById('name').value.trim();
+    const category = document.getElementById('category').value;
+    const mfgDate = document.getElementById('mfgDate').value || null;
+    const expiryDate = document.getElementById('expiryDate').value;
+    const notes = document.getElementById('notes').value.trim();
+
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving...';
+
+    if (!window.supabaseClient) {
+      alertBox.textContent = 'Supabase client not loaded.';
+      alertBox.className = 'msg-box error';
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Save to Global Catalog';
+      return;
+    }
+
+    const payload = {
+      barcode, name, category, mfg_date: mfgDate, expiry_date: expiryDate, notes
+    };
+
+    const { error } = await window.supabaseClient.from('global_catalog').upsert([payload], { onConflict: 'barcode' });
+
+    if (error) {
+      alertBox.textContent = '❌ Error saving: ' + error.message;
+      alertBox.className = 'msg-box error';
+    } else {
+      alertBox.textContent = '✅ Product saved to global catalog successfully!';
+      alertBox.className = 'msg-box success';
+      document.getElementById('adminForm').reset();
+      document.getElementById('startScanBtn').textContent = '📷 Start Live Scanner';
+    }
+    
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Save to Global Catalog';
+    window.scrollTo(0, 0);
+  });
+</script>
+
+</body>
+</html>

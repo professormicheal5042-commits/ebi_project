@@ -11,4 +11,5 @@ export const BARCODE_SCAN_API = `${API_BASE}/api/scan-barcode`;
 export const QR_PRODUCT_API = `${API_BASE}/api/scan-qr-product`;
 export const ENRICH_QR_PAYLOAD_API = `${API_BASE}/api/enrich-qr-payload`;
 export const BARCODE_LOOKUP_API = `${API_BASE}/api/lookup-barcode`;
+export const GENERATE_SUMMARY_API = `${API_BASE}/api/generate-summary`;
 export const API_HEALTH = `${API_BASE}/api/health`;

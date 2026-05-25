@@ -25,7 +25,25 @@ CREATE TABLE products (
 ALTER TABLE products ADD COLUMN IF NOT EXISTS barcode TEXT;
 CREATE INDEX IF NOT EXISTS idx_products_barcode ON products (barcode);
 
--- 2. Create the Alerts Table
+-- 2. Create the Global Catalog Table (Admin Uploads)
+CREATE TABLE global_catalog (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    barcode TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    category TEXT,
+    mfg_date DATE,
+    expiry_date DATE NOT NULL,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT now()
+);
+
+-- Allow anyone to read the catalog, but only allow inserts from authenticated users (Admin UI)
+ALTER TABLE global_catalog ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can view global catalog" ON global_catalog FOR SELECT USING (true);
+CREATE POLICY "Users can insert into global catalog" ON global_catalog FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Users can update global catalog" ON global_catalog FOR UPDATE USING (auth.role() = 'authenticated');
+
+-- 3. Create the Alerts Table
 CREATE TABLE alerts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     product_id UUID REFERENCES products(id) ON DELETE CASCADE,

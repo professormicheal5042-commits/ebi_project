@@ -756,3 +756,27 @@ def lookup_barcode(code: str = Query(..., min_length=3, max_length=64)):
         "category": _map_off_category(tags),
         "brand": brand,
     }
+
+@app.post("/api/generate-summary")
+async def generate_summary(name: str = Form(...), category: str = Form(...)):
+    """Generate a detailed summary for a product using Gemini."""
+    if not _gemini_key():
+        return {"summary": "Detailed AI summary unavailable (Gemini API key missing)."}
+        
+    try:
+        prompt = (
+            f"Write a professional, detailed summary for a product named '{name}' "
+            f"in the '{category}' category. Include general uses, storage instructions, "
+            f"and important warnings or side effects (especially if it is medicine or food). "
+            f"Format it as plain text paragraphs without markdown asterisks."
+        )
+        
+        response = _run_gemini(b"", prompt) # no image needed
+        if not response:
+            return {"summary": "Detailed summary not available."}
+            
+        return {"summary": response.strip()}
+    except Exception as e:
+        logger.error(f"Error generating summary: {str(e)}")
+        return {"summary": "Detailed summary not available due to an error."}
+

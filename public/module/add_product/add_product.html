@@ -10,7 +10,7 @@
     rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" />
   <link rel="stylesheet" href="./add_product.css" />
-  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 </head>
 
 <body>
@@ -91,43 +91,12 @@
             <div style="margin-bottom: 12px; display: none;" id="scanStatusContainer">
               <span class="scan-status-tag" id="scanStatusTag">🟢 Scanning...</span>
             </div>
-            <div class="cam-wrapper" id="camWrapper">
-              <video id="cameraStream" autoplay playsinline></video>
-              <canvas id="qrOverlayCanvas"></canvas>
-              <div class="scan-crop-overlay" id="scanCropOverlay" style="display:none;">
-                <div class="scan-corner tl"></div>
-                <div class="scan-corner tr"></div>
-                <div class="scan-corner bl"></div>
-                <div class="scan-corner br"></div>
-                <div class="scan-line" id="scanLine"></div>
-              </div>
-            </div>
-            <!-- Camera controls (selector & zoom & light) -->
-            <div class="cam-controls" id="camControls">
-              <div class="cam-control-row">
-                <label for="cameraSelect">Camera:</label>
-                <select id="cameraSelect" class="cam-select" onchange="switchCameraDevice()"></select>
-              </div>
-              <div class="cam-control-row" id="zoomControlRow" style="display: none;">
-                <label for="zoomRange">Zoom:</label>
-                <div class="zoom-slider-container">
-                  <input type="range" id="zoomRange" class="zoom-slider" min="1" max="5" step="0.1" value="1"
-                    oninput="changeZoom(this.value)" />
-                  <span id="zoomVal" class="zoom-val">1x</span>
-                </div>
-              </div>
-              <div class="cam-control-row" id="torchControlRow" style="display: none;">
-                <label>Light:</label>
-                <button type="button" class="btn-ocr" id="btnToggleTorch" onclick="toggleTorch()" style="margin: 0;">🔦 Turn On Light</button>
-              </div>
-            </div>
-            <canvas id="cameraCanvas" style="display:none;"></canvas>
-            <div class="camera-actions">
-              <button type="button" class="btn-ocr" id="btnStartCam" onclick="startCamera()">▶️ Start Camera</button>
-              <button type="button" class="btn-ocr" id="btnCaptureLabel" onclick="captureLiveLabel()" style="display:none">📸 Analyze Label</button>
-              <button type="button" class="btn-ocr" id="btnRescan" onclick="resumeScanning()" style="display:none">🔄 Scan Next</button>
-              <button type="button" class="btn-ocr-red" id="btnStopCam" onclick="stopCamera()" style="display:none">⏹
-                Stop Camera</button>
+            <div id="reader" style="width: 100%; max-width: 500px; margin: 0 auto; display: none; border-radius: 8px; overflow: hidden;"></div>
+            <div class="ocr-actions">
+              <button type="button" class="btn-ocr" id="btnStartCamera" onclick="startCameraScanner()">📷 Start Scanner</button>
+              <button type="button" class="btn-ocr" id="btnCaptureLabel" onclick="captureLabelForOCR()" style="display:none">📄 Analyze Label</button>
+              <button type="button" class="btn-ocr" id="btnRescan" onclick="startCameraScanner()" style="display:none">🔄 Rescan</button>
+              <button type="button" class="btn-ocr-red" id="btnStopCam" onclick="stopCamera()" style="display:none">⏹ Stop Camera</button>
             </div>
           </div>
 
@@ -347,16 +316,60 @@
       return true;
     }
 
-    // ── Handle ANY decoded QR/barcode text — GS1 first, then API fallback ──
+    // ── Handle ANY decoded QR/barcode text — Global Catalog first, then GS1, then API fallback ──
     async function handleDecodedText(decodedText) {
-      // 1. Try GS1 parsing locally (instant, no API call)
+      const errorBox = document.getElementById('errorBox');
+      const successBox = document.getElementById('successBox');
+      errorBox.classList.remove('show');
+      successBox.classList.remove('show');
+      
+      // 1. Query Global Catalog
+      if (window.supabaseClient) {
+        const { data: catalogItem, error } = await window.supabaseClient
+          .from('global_catalog')
+          .select('*')
+          .eq('barcode', decodedText)
+          .single();
+          
+        if (catalogItem) {
+          // Found in global catalog!
+          document.getElementById('prodName').value = catalogItem.name;
+          if (catalogItem.category) selectCategoryValue(catalogItem.category);
+          if (catalogItem.mfg_date) document.getElementById('prodMfgDate').value = catalogItem.mfg_date;
+          if (catalogItem.expiry_date) document.getElementById('prodExpiryDate').value = catalogItem.expiry_date;
+          
+          successBox.textContent = `✅ Found in Global Catalog: ${catalogItem.name}. Generating AI summary...`;
+          successBox.classList.add('show');
+          
+          // Generate AI Summary for notes
+          const formData = new FormData();
+          formData.append('name', catalogItem.name);
+          formData.append('category', catalogItem.category || 'Other');
+          
+          try {
+            // Import GENERATE_SUMMARY_API dynamically or use global
+            const api_url = window.GENERATE_SUMMARY_API_URL || 'https://ebi-project-yr1i.onrender.com/api/generate-summary';
+            const res = await fetch(api_url, { method: 'POST', body: formData });
+            if (res.ok) {
+              const summaryData = await res.json();
+              document.getElementById('prodNotes').value = summaryData.summary + '\n\n' + (catalogItem.notes || '');
+            }
+          } catch (e) {
+            console.error('Summary error', e);
+          }
+          
+          return true;
+        }
+      }
+
+      // 2. Try GS1 parsing locally (instant, no API call)
       const gs1 = parseGS1(decodedText);
       if (gs1) {
         autoFillFromGS1(gs1, decodedText);
         return true;
       }
 
-      // 2. Not GS1 — fall back to API enrichment (URLs, plain barcodes)
+      // 3. Not GS1 & Not in Catalog — fall back to API enrichment (URLs, plain barcodes)
       await sendToEnrichQrPayload(decodedText);
       return true;
     }
@@ -719,348 +732,52 @@
       }
     }
 
-    async function enumerateCameras() {
-      const select = document.getElementById('cameraSelect');
-      select.innerHTML = '';
-      try {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const videoDevices = devices.filter(d => d.kind === 'videoinput');
+    let html5QrcodeScanner = null;
 
-        if (videoDevices.length === 0) {
-          const opt = document.createElement('option');
-          opt.text = "No cameras found";
-          select.appendChild(opt);
-          return;
-        }
-
-        videoDevices.forEach((device, index) => {
-          const opt = document.createElement('option');
-          opt.value = device.deviceId;
-          opt.text = device.label || `Camera ${index + 1}`;
-          select.appendChild(opt);
-        });
-
-        const backCam = videoDevices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('environment'));
-        if (backCam) {
-          select.value = backCam.deviceId;
-        } else if (videoDevices.length > 0) {
-          select.value = videoDevices[0].deviceId;
-        }
-        currentDeviceId = select.value;
-      } catch (err) {
-        console.error("enumerateDevices failed:", err);
-      }
+    function startCameraScanner() {
+      document.getElementById('reader').style.display = 'block';
+      document.getElementById('btnStartCamera').style.display = 'none';
+      document.getElementById('btnStopCam').style.display = 'inline-block';
+      document.getElementById('btnCaptureLabel').style.display = 'none';
+      
+      html5QrcodeScanner = new Html5QrcodeScanner(
+        "reader",
+        { fps: 10, qrbox: {width: 250, height: 150}, aspectRatio: 1.0 },
+        /* verbose= */ false
+      );
+      html5QrcodeScanner.render(onScanSuccess, onScanFailure);
     }
 
-    async function startCamera() {
-      const video = document.getElementById('cameraStream');
-      const btnStart = document.getElementById('btnStartCam');
-      const btnStop = document.getElementById('btnStopCam');
-      const btnRescan = document.getElementById('btnRescan');
-      const overlayCanvas = document.getElementById('qrOverlayCanvas');
-      const camControls = document.getElementById('camControls');
-      const statusContainer = document.getElementById('scanStatusContainer');
-      const statusTag = document.getElementById('scanStatusTag');
-
-      statusTag.textContent = '🟢 Scanning...';
-      statusContainer.style.display = 'block';
-      btnRescan.style.display = 'none';
-
-      const constraints = {
-        video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
-      };
-
-      if (currentDeviceId) {
-        constraints.video.deviceId = { exact: currentDeviceId };
-      } else {
-        constraints.video.facingMode = 'environment';
-      }
-
-      try {
-        cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
-        video.srcObject = cameraStream;
-        video.style.display = 'block';
-        overlayCanvas.style.display = 'block';
-
-        videoTrack = cameraStream.getVideoTracks()[0];
-
-        if (!currentDeviceId) {
-          await enumerateCameras();
-          const settings = videoTrack.getSettings();
-          if (settings.deviceId) {
-            currentDeviceId = settings.deviceId;
-            document.getElementById('cameraSelect').value = currentDeviceId;
-          }
-        }
-
-        setupZoomControl(videoTrack);
-        setupTorchControl(videoTrack);
-
-        camControls.style.display = 'flex';
-        btnStart.style.display = 'none';
-        document.getElementById('btnCaptureLabel').style.display = 'inline';
-        btnStop.style.display = 'inline';
-
-        isScanning = true;
-        video.play();
-        requestAnimationFrame(scanLoop);
-      } catch (err) {
-        document.getElementById('errorBox').textContent = '❌ Camera access denied: ' + err.message;
-        document.getElementById('errorBox').classList.add('show');
-      }
+    async function onScanSuccess(decodedText, decodedResult) {
+      playBeep();
+      stopCamera();
+      
+      document.getElementById('btnRescan').style.display = 'inline-block';
+      
+      // Handle the decoded barcode
+      await handleDecodedText(decodedText);
+      document.getElementById('productForm').scrollIntoView({ behavior: 'smooth' });
     }
 
-    let torchActive = false;
-
-    function setupTorchControl(track) {
-      const torchRow = document.getElementById('torchControlRow');
-      const btnToggleTorch = document.getElementById('btnToggleTorch');
-      if (!track || typeof track.getCapabilities !== 'function') {
-        torchRow.style.display = 'none';
-        return;
-      }
-      try {
-        const caps = track.getCapabilities();
-        if (caps.torch) {
-          torchRow.style.display = 'flex';
-          torchActive = false;
-          btnToggleTorch.textContent = '🔦 Turn On Light';
-        } else {
-          torchRow.style.display = 'none';
-        }
-      } catch (err) {
-        console.warn("Torch capability check failed:", err);
-        torchRow.style.display = 'none';
-      }
-    }
-
-    async function toggleTorch() {
-      if (videoTrack) {
-        try {
-          torchActive = !torchActive;
-          await videoTrack.applyConstraints({ advanced: [{ torch: torchActive }] });
-          const btnToggleTorch = document.getElementById('btnToggleTorch');
-          btnToggleTorch.textContent = torchActive ? '💡 Turn Off Light' : '🔦 Turn On Light';
-        } catch (err) {
-          console.error("Failed to toggle torch:", err);
-          torchActive = !torchActive; // revert state
-        }
-      }
-    }
-
-    function setupZoomControl(track) {
-      const zoomRow = document.getElementById('zoomControlRow');
-      const slider = document.getElementById('zoomRange');
-      const valText = document.getElementById('zoomVal');
-
-      if (!track || typeof track.getCapabilities !== 'function') {
-        zoomRow.style.display = 'none';
-        return;
-      }
-
-      try {
-        const caps = track.getCapabilities();
-        if (caps.zoom) {
-          zoomRow.style.display = 'flex';
-          slider.min = caps.zoom.min;
-          slider.max = caps.zoom.max;
-          slider.step = caps.zoom.step || 0.1;
-
-          const settings = track.getSettings();
-          slider.value = settings.zoom || caps.zoom.min;
-          valText.textContent = Number(slider.value).toFixed(1) + 'x';
-        } else {
-          zoomRow.style.display = 'none';
-        }
-      } catch (err) {
-        console.warn("Zoom capabilities not supported:", err);
-        zoomRow.style.display = 'none';
-      }
-    }
-
-    async function changeZoom(val) {
-      if (videoTrack) {
-        try {
-          await videoTrack.applyConstraints({ advanced: [{ zoom: parseFloat(val) }] });
-          document.getElementById('zoomVal').textContent = parseFloat(val).toFixed(1) + 'x';
-        } catch (err) {
-          console.error("applyConstraints zoom failed:", err);
-        }
-      }
-    }
-
-    async function switchCameraDevice() {
-      const select = document.getElementById('cameraSelect');
-      currentDeviceId = select.value;
-      if (cameraStream) {
-        cameraStream.getTracks().forEach(t => t.stop());
-      }
-      await startCamera();
+    function onScanFailure(error) {
+      // Ignore failures
     }
 
     function stopCamera() {
-      const video = document.getElementById('cameraStream');
-      const overlayCanvas = document.getElementById('qrOverlayCanvas');
-      const camControls = document.getElementById('camControls');
-      const statusContainer = document.getElementById('scanStatusContainer');
-
-      isScanning = false;
-      if (cameraStream) {
-        cameraStream.getTracks().forEach(t => t.stop());
-        cameraStream = null;
-        videoTrack = null;
+      if (html5QrcodeScanner) {
+        html5QrcodeScanner.clear().catch(e => console.error("Failed to clear scanner", e));
       }
-      video.style.display = 'none';
-      if (overlayCanvas) {
-        overlayCanvas.style.display = 'none';
-        const ctx = overlayCanvas.getContext('2d');
-        ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-      }
-      if (camControls) camControls.style.display = 'none';
-      if (statusContainer) statusContainer.style.display = 'none';
-
-      document.getElementById('torchControlRow').style.display = 'none';
-      torchActive = false;
-
-      document.getElementById('btnStartCam').style.display = 'inline';
-      document.getElementById('btnCaptureLabel').style.display = 'none';
-      document.getElementById('btnRescan').style.display = 'none';
+      document.getElementById('reader').style.display = 'none';
+      document.getElementById('btnStartCamera').style.display = 'inline-block';
+      document.getElementById('btnStartCamera').textContent = '📷 Start Scanner';
       document.getElementById('btnStopCam').style.display = 'none';
+      document.getElementById('btnCaptureLabel').style.display = 'inline-block';
     }
 
-    async function scanLoop() {
-      if (!isScanning) return;
-
-      const video = document.getElementById('cameraStream');
-      const canvas = document.getElementById('cameraCanvas');
-      const overlayCanvas = document.getElementById('qrOverlayCanvas');
-
-      if (video.readyState === video.HAVE_ENOUGH_DATA) {
-        overlayCanvas.width = video.clientWidth;
-        overlayCanvas.height = video.clientHeight;
-
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const code = jsQR(imageData.data, imageData.width, imageData.height, {
-          inversionAttempts: "attemptBoth",
-        });
-
-        const overlayCtx = overlayCanvas.getContext('2d');
-        overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-
-        if (code) {
-          // ── Confirmation logic: require QR_CONFIRM_FRAMES consecutive frames ──
-          // This prevents triggering on blurry/partial detections
-          if (code.data === lastQrData) {
-            qrConfirmCount++;
-          } else {
-            // New/different code detected — reset counter
-            lastQrData = code.data;
-            qrConfirmCount = 1;
-          }
-
-          const scaleX = overlayCanvas.width / video.videoWidth;
-          const scaleY = overlayCanvas.height / video.videoHeight;
-
-          // Show outline as yellow (confirming) or green (confirmed/ready)
-          overlayCtx.strokeStyle = qrConfirmCount >= QR_CONFIRM_FRAMES ? '#00e676' : '#ffd600';
-          overlayCtx.lineWidth = 4;
-          overlayCtx.beginPath();
-          overlayCtx.moveTo(code.location.topLeftCorner.x * scaleX, code.location.topLeftCorner.y * scaleY);
-          overlayCtx.lineTo(code.location.topRightCorner.x * scaleX, code.location.topRightCorner.y * scaleY);
-          overlayCtx.lineTo(code.location.bottomRightCorner.x * scaleX, code.location.bottomRightCorner.y * scaleY);
-          overlayCtx.lineTo(code.location.bottomLeftCorner.x * scaleX, code.location.bottomLeftCorner.y * scaleY);
-          overlayCtx.closePath();
-          overlayCtx.stroke();
-
-          // Only trigger when confirmed across enough frames
-          if (qrConfirmCount >= QR_CONFIRM_FRAMES) {
-            isScanning = false;
-            video.pause();
-            playBeep();
-
-            const decodedText = code.data; // Already decoded by jsQR — use directly!
-
-            document.getElementById('scanStatusTag').textContent = '⚡ Extracting details...';
-            document.getElementById('btnRescan').style.display = 'inline';
-            document.getElementById('btnCaptureLabel').style.display = 'none';
-
-            // Reset confirmation state for next scan
-            qrConfirmCount = 0;
-            lastQrData = null;
-
-            // Parse and auto-fill locally (GS1) or via API fallback
-            await handleDecodedText(decodedText);
-
-            stopCamera();
-            document.getElementById('productForm').scrollIntoView({ behavior: 'smooth' });
-
-            return;
-          }
-        } else {
-          // No QR in this frame — reset confirmation counter
-          qrConfirmCount = 0;
-          lastQrData = null;
-        }
-      }
-
-      if (isScanning) {
-        requestAnimationFrame(scanLoop);
-      }
-    }
-
-    function resumeScanning() {
-      const video = document.getElementById('cameraStream');
-      const btnRescan = document.getElementById('btnRescan');
-      const overlayCanvas = document.getElementById('qrOverlayCanvas');
-      const statusTag = document.getElementById('scanStatusTag');
-
-      const overlayCtx = overlayCanvas.getContext('2d');
-      overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-
-      btnRescan.style.display = 'none';
-      document.getElementById('btnCaptureLabel').style.display = 'inline';
-      statusTag.textContent = '🟢 Scanning...';
-
-      // Reset confirmation state before resuming
-      qrConfirmCount = 0;
-      lastQrData = null;
-
-      isScanning = true;
-      video.play();
-      requestAnimationFrame(scanLoop);
-    }
-
-    async function captureLiveLabel() {
-      const video = document.getElementById('cameraStream');
-      const canvas = document.getElementById('cameraCanvas');
-      if (!isScanning || video.readyState !== video.HAVE_ENOUGH_DATA) return;
-      
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
-      isScanning = false;
-      video.pause();
-      playBeep();
-      
-      document.getElementById('scanStatusTag').textContent = '⚡ Analyzing Label...';
-      document.getElementById('btnRescan').style.display = 'inline';
-      document.getElementById('btnCaptureLabel').style.display = 'none';
-
-      canvas.toBlob(async (blob) => {
-        await sendToOCR(blob);
-        stopCamera();
-        document.getElementById('productForm').scrollIntoView({ behavior: 'smooth' });
-      }, 'image/jpeg', 0.92);
+    function captureLabelForOCR() {
+      // Html5QrcodeScanner doesn't natively support capturing a frame for OCR
+      // So we ask the user to use the Upload tab instead
+      alert("Please use the 'Upload & Crop' tab to capture an image for OCR.");
     }
 
     // ── selectCategoryValue — used by fillProductFromScan ─────────────────
